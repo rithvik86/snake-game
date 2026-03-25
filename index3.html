@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 3px solid white;
+            background-color: #111;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .info {
+            color: white;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            font-size: 14px;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 30px;
+            font-size: 16px;
+            background-color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #ddd;
+            transform: scale(1.05);
+        }
+
+        .game-over {
+            color: #ff6b6b;
+            font-size: 20px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* ================================
+           OVERLAY SCREENS
+        ================================ */
+
+        .overlay-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            background: rgba(80, 50, 140, 0.45);
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            padding: 45px 55px;
+            text-align: center;
+            width: 90%;
+            max-width: 480px;
+            box-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.45),
+                0 0 60px rgba(102, 126, 234, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            animation: slideUp 0.6s ease forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(25px) scale(0.97);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* ================================
+           WELCOME SCREEN
+        ================================ */
+
+        .welcome-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffffff;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            text-shadow:
+                0 0 20px rgba(255, 255, 255, 0.5),
+                0 0 40px rgba(102, 126, 234, 0.6);
+        }
+
+        .welcome-subtitle {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.70);
+            line-height: 1.7;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+
+        /* ================================
+           NAME INPUT
+        ================================ */
+
+        .name-input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 1rem;
+            font-family: Arial, sans-serif;
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.30);
+            border-radius: 10px;
+            color: #ffffff;
+            text-align: center;
+            letter-spacing: 2px;
+            outline: none;
+            margin-bottom: 6px; /* reduced - error msg sits below */
+            transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .name-input:focus {
+            border-color: rgba(255, 255, 255, 0.70);
+            background: rgba(102, 126, 234, 0.25);
+            box-shadow: 0 0 18px rgba(102, 126, 234, 0.4);
+        }
+
+        .name-input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+            letter-spacing: 1px;
+        }
+
+        /* Red border state when name is taken or empty */
+        .name-input.input-error {
+            border-color: rgba(255, 107, 107, 0.9) !important;
+            box-shadow: 0 0 14px rgba(255, 107, 107, 0.4) !important;
+        }
+
+        /* ================================
+           SHAKE ANIMATION
+           Applied to the input when the
+           name is already taken
+        ================================ */
+
+        @keyframes shake {
+            0%   { transform: translateX(0);    }
+            15%  { transform: translateX(-7px); }
+            30%  { transform: translateX(7px);  }
+            45%  { transform: translateX(-5px); }
+            60%  { transform: translateX(5px);  }
+            75%  { transform: translateX(-3px); }
+            90%  { transform: translateX(3px);  }
+            100% { transform: translateX(0);    }
+        }
+
+        .name-input.shake {
+            animation: shake 0.55s ease forwards;
+        }
+
+        /* ================================
+           ERROR MESSAGE LINE
+           Sits below the input, hidden
+           by default
+        ================================ */
+
+        .input-error-msg {
+            font-size: 0.80rem;
+            color: rgba(255, 107, 107, 0.95);
+            letter-spacing: 0.5px;
+            min-height: 18px;   /* reserves space so layout doesn't jump */
+            margin-bottom: 14px;
+            text-align: center;
+            transition: opacity 0.3s ease;
+        }
+
+        /* ================================
+           ENTER BUTTON
+        ================================ */
+
+        .enter-btn {
+            width: 100%;
+            padding: 13px;
+            font-size: 1rem;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            letter-spacing: 2px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 18px rgba(102, 126, 234, 0.5);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .enter-btn:hover {
+            background: linear-gradient(135deg, #7b8ff5 0%, #8a5cb5 100%);
+            transform: scale(1.04);
+            box-shadow: 0 6px 24px rgba(102, 126, 234, 0.65);
+        }
+
+        .enter-btn:active {
+            transform: scale(1.00);
+        }
+
+        /* Disabled state while checking Firebase */
+        .enter-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ================================
+           LEADERBOARD SCREEN
+        ================================ */
+
+        .leaderboard-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffffff;
+            letter-spacing: 3px;
+            margin-bottom: 6px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+        }
+
+        .score-display {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.80);
+            margin-bottom: 22px;
+            letter-spacing: 1px;
+        }
+
+        /* ================================
+           LEADERBOARD LIST
+        ================================ */
+
+        .leaderboard-list {
+            width: 100%;
+            max-height: 260px;
+            overflow-y: auto;
+            margin-bottom: 22px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(102, 126, 234, 0.5) transparent;
+        }
+
+        .leaderboard-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 14px;
+            margin-bottom: 7px;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            font-size: 0.92rem;
+        }
+
+        .leaderboard-row.current-player {
+            background: rgba(102, 126, 234, 0.25);
+            border-color: rgba(255, 255, 255, 0.35);
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.25);
+        }
+
+        .row-rank {
+            width: 32px;
+            text-align: left;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 0.85rem;
+        }
+
+        .row-rank.gold   { color: #ffd700; }
+        .row-rank.silver { color: #c0c0c0; }
+        .row-rank.bronze { color: #cd7f32; }
+
+        .row-name {
+            flex: 1;
+            text-align: left;
+            padding-left: 10px;
+            color: #ffffff;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+
+        .row-score {
+            color: rgba(255, 255, 255, 0.90);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* Blinking "press any key" hint */
+        .restart-hint {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.45);
+            letter-spacing: 2px;
+            animation: blink 1.8s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 0.35; }
+            50%       { opacity: 1;    }
+        }
+
+        /* ================================
+           LOADING SPINNER
+           Shows while Firebase is saving
+        ================================ */
+
+        .loading-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px 0;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ================================
+           UTILITY
+        ================================ */
+
+        .hidden {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐍 Snake Game</h1>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="info">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="controls">Use ARROW KEYS or WASD to move</div>
+            <button onclick="resetGame()">New Game</button>
+        </div>
+        <div class="game-over" id="gameOverText"></div>
+    </div>
+
+    <!-- WELCOME / NAME ENTRY SCREEN -->
+    <div class="overlay-screen" id="welcomeScreen">
+        <div class="glass-card">
+            <div class="welcome-title">🐍 Hall of Fame</div>
+            <div class="welcome-subtitle">
+                Enter a name the leaderboard won't forget.<br>
+                Welcome to the hall of fame...
+            </div>
+            <input
+                type="text"
+                class="name-input"
+                id="playerNameInput"
+                placeholder="YOUR NAME"
+                maxlength="16"
+                autocomplete="off"
+            />
+            <!--
+                Error message line.
+                Empty by default — JS writes into it when needed.
+            -->
+            <div class="input-error-msg" id="nameErrorMsg"></div>
+            <button class="enter-btn" id="startGameBtn">
+                Enter the Arena
+            </button>
+        </div>
+    </div>
+
+    <!-- LEADERBOARD / GAME OVER SCREEN -->
+    <div class="overlay-screen hidden" id="leaderboardScreen">
+        <div class="glass-card">
+            <div class="leaderboard-title">💀 Game Over</div>
+            <div class="score-display" id="currentScoreDisplay">
+                You scored: 0
+            </div>
+            <div class="leaderboard-list" id="leaderboardList"></div>
+            <div class="restart-hint">— PRESS ANY KEY OR CLICK TO PLAY AGAIN —</div>
+        </div>
+    </div>
+
+    <!--
+        Firebase SDK (v9 modular, loaded from CDN)
+        We use the "compat" build so we can write
+        firebase.firestore() style code without
+        needing a bundler like Webpack
+    -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <script>
+
+        /* ================================================
+           STEP 1 — PASTE YOUR FIREBASE CONFIG HERE
+           Replace every value below with the ones from
+           your Firebase project settings page.
+        ================================================ */
+
+        const firebaseConfig = {
+            apiKey:            "PASTE_YOUR_API_KEY_HERE",
+            authDomain:        "PASTE_YOUR_AUTH_DOMAIN_HERE",
+            projectId:         "PASTE_YOUR_PROJECT_ID_HERE",
+            storageBucket:     "PASTE_YOUR_STORAGE_BUCKET_HERE",
+            messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID_HERE",
+            appId:             "PASTE_YOUR_APP_ID_HERE"
+        };
+
+        /* ================================================
+           STEP 2 — INITIALISE FIREBASE
+           This connects your game to Firestore.
+           Nothing below needs to change.
+        ================================================ */
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        /*
+            This is the Firestore collection name.
+            All scores live in:  leaderboard / {playerName}
+            One document per player — no duplicates.
+        */
+        const COLLECTION = 'leaderboard';
+
+
+        /* ================================================
+           ORIGINAL GAME VARIABLES — UNCHANGED
+        ================================================ */
+
+        const canvas      = document.getElementById('gameCanvas');
+        const ctx         = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverText = document.getElementById('gameOverText');
+
+        const gridSize  = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake    = [{ x: 10, y: 10 }];
+        let apple    = { x: 15, y: 15 };
+        let dx       = 1;
+        let dy       = 0;
+        let nextDx   = 1;
+        let nextDy   = 0;
+        let score    = 0;
+        let gameOver = false;
+        let gameInterval = null;
+
+        /* ================================================
+           NEW VARIABLES
+        ================================================ */
+
+        let currentPlayerName = '';
+
+
+        /* ================================================
+           ORIGINAL — KEYBOARD CONTROLS — UNCHANGED
+        ================================================ */
+
+        document.addEventListener('keydown', (e) => {
+            switch(e.key.toLowerCase()) {
+                case 'arrowup':
+                case 'w':
+                    if (dy === 0) { nextDx = 0; nextDy = -1; }
+                    break;
+                case 'arrowdown':
+                case 's':
+                    if (dy === 0) { nextDx = 0; nextDy = 1; }
+                    break;
+                case 'arrowleft':
+                case 'a':
+                    if (dx === 0) { nextDx = -1; nextDy = 0; }
+                    break;
+                case 'arrowright':
+                case 'd':
+                    if (dx === 0) { nextDx = 1; nextDy = 0; }
+                    break;
+            }
+        });
+
+
+        /* ================================================
+           ORIGINAL — UPDATE — UNCHANGED
+        ================================================ */
+
+        function update() {
+            if (gameOver) return;
+
+            dx = nextDx;
+            dy = nextDy;
+
+            const head    = snake[0];
+            const newHead = { x: head.x + dx, y: head.y + dy };
+
+            if (newHead.x < 0 || newHead.x >= tileCount ||
+                newHead.y < 0 || newHead.y >= tileCount) {
+                endGame();
+                return;
+            }
+
+            for (let segment of snake) {
+                if (newHead.x === segment.x && newHead.y === segment.y) {
+                    endGame();
+                    return;
+                }
+            }
+
+            snake.unshift(newHead);
+
+            if (newHead.x === apple.x && newHead.y === apple.y) {
+                score += 10;
+                scoreDisplay.textContent = score;
+                spawnApple();
+            } else {
+                snake.pop();
+            }
+        }
+
+
+        /* ================================================
+           ORIGINAL — SPAWN APPLE — UNCHANGED
+        ================================================ */
+
+        function spawnApple() {
+            let newApple, collision;
+            do {
+                collision = false;
+                newApple = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+                for (let segment of snake) {
+                    if (newApple.x === segment.x && newApple.y === segment.y) {
+                        collision = true;
+                        break;
+                    }
+                }
+            } while (collision);
+            apple = newApple;
+        }
+
+
+        /* ================================================
+           ORIGINAL — DRAW — UNCHANGED
+        ================================================ */
+
+        function draw() {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= tileCount; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * gridSize, 0);
+                ctx.lineTo(i * gridSize, canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * gridSize);
+                ctx.lineTo(canvas.width, i * gridSize);
+                ctx.stroke();
+            }
+
+            snake.forEach((segment, index) => {
+                ctx.fillStyle = index === 0 ? '#00ff00' : '#00cc00';
+                ctx.fillRect(
+                    segment.x * gridSize + 1,
+                    segment.y * gridSize + 1,
+                    gridSize - 2,
+                    gridSize - 2
+                );
+            });
+
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(
+                apple.x * gridSize + gridSize / 2,
+                apple.y * gridSize + gridSize / 2,
+                gridSize / 2 - 1,
+                0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+
+
+        /* ================================================
+           ORIGINAL — GAME LOOP — UNCHANGED
+        ================================================ */
+
+        function gameLoop() {
+            update();
+            draw();
+        }
+
+
+        /* ================================================
+           MODIFIED — endGame
+           Now calls the async saveScoreToFirebase
+           instead of the old localStorage helper
+        ================================================ */
+
+        function endGame() {
+            gameOver = true;
+            gameOverText.textContent = `Game Over! Final Score: ${score}`;
+            clearInterval(gameInterval);
+
+            /*
+                Show the overlay immediately with a loading
+                spinner while we wait for Firebase to respond.
+                The list is then populated once the save is done.
+            */
+            showLeaderboardLoading(score);
+            saveScoreToFirebase(currentPlayerName, score);
+        }
+
+
+        /* ================================================
+           NEW — resetGame — replaces location.reload()
+        ================================================ */
+
+        function resetGame() {
+            snake    = [{ x: 10, y: 10 }];
+            apple    = { x: 15, y: 15 };
+            dx       = 1;
+            dy       = 0;
+            nextDx   = 1;
+            nextDy   = 0;
+            score    = 0;
+            gameOver = false;
+
+            scoreDisplay.textContent = '0';
+            gameOverText.textContent = '';
+
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 100);
+        }
+
+
+        /* ================================================
+           NEW — FIREBASE: CHECK IF NAME IS TAKEN
+
+           Reads Firestore to see if a document with
+           this name already exists.
+           Returns a Promise<boolean>.
+        ================================================ */
+
+        async function isNameTaken(name) {
+            /*
+                We use the player's name as the document ID
+                so each name can only ever appear once.
+                This makes the lookup O(1) — very fast.
+            */
+            const docRef = db.collection(COLLECTION).doc(name);
+            const snap   = await docRef.get();
+            return snap.exists;
+        }
+
+
+        /* ================================================
+           NEW — FIREBASE: SAVE / UPDATE SCORE
+
+           Logic:
+           - If player has NO existing doc → create it
+           - If player HAS a doc AND new score is higher
+             → update it
+           - If new score is lower → do nothing
+           
+           After saving, reads top 10 and renders them.
+        ================================================ */
+
+        async function saveScoreToFirebase(name, newScore) {
+            const docRef = db.collection(COLLECTION).doc(name);
+
+            try {
+                const snap = await docRef.get();
+
+                if (!snap.exists) {
+                    /*
+                        First time this player has finished a game.
+                        Create a new document.
+                    */
+                    await docRef.set({
+                        name:      name,
+                        score:     newScore,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                } else {
+                    const existingScore = snap.data().score;
+
+                    if (newScore > existingScore) {
+                        /*
+                            Player beat their personal best.
+                            Update the document with the new high score.
+                        */
+                        await docRef.update({
+                            score:     newScore,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                    /*
+                        If newScore <= existingScore we do nothing —
+                        the leaderboard already has their best.
+                    */
+                }
+
+                /*
+                    Score is saved. Now fetch the top 10
+                    and render the leaderboard.
+                */
+                await renderLeaderboard(name, newScore);
+
+            } catch (err) {
+                console.error('Firebase save error:', err);
+                /*
+                    If Firebase fails for any reason,
+                    show a friendly message instead of
+                    a blank leaderboard.
+                */
+                const listEl = document.getElementById('leaderboardList');
+                listEl.innerHTML = `
+                    <div class="loading-row">
+                        ⚠️ Couldn't load scores. Check your connection.
+                    </div>`;
+            }
+        }
+
+
+        /* ================================================
+           NEW — FIREBASE: FETCH TOP 10 AND RENDER
+
+           Queries Firestore for the top 10 scores,
+           ordered highest first, then builds the
+           leaderboard rows.
+        ================================================ */
+
+        async function renderLeaderboard(playerName, playerScore) {
+            const listEl = document.getElementById('leaderboardList');
+
+            try {
+                const snapshot = await db
+                    .collection(COLLECTION)
+                    .orderBy('score', 'desc')
+                    .limit(10)
+                    .get();
+
+                listEl.innerHTML = ''; // clear spinner
+
+                if (snapshot.empty) {
+                    listEl.innerHTML = `
+                        <div class="loading-row">No scores yet — you're first!</div>`;
+                    return;
+                }
+
+                snapshot.forEach((doc, index) => {
+                    const entry = doc.data();
+                    const rank  = index; // 0-based
+
+                    const row = document.createElement('div');
+                    row.classList.add('leaderboard-row');
+
+                    /*
+                        Highlight the current player's row.
+                        We match on name — there's only one doc per name.
+                    */
+                    if (entry.name === playerName) {
+                        row.classList.add('current-player');
+                    }
+
+                    // Rank cell
+                    const rankEl = document.createElement('div');
+                    rankEl.classList.add('row-rank');
+                    if (rank === 0) {
+                        rankEl.classList.add('gold');
+                        rankEl.textContent = '🥇';
+                    } else if (rank === 1) {
+                        rankEl.classList.add('silver');
+                        rankEl.textContent = '🥈';
+                    } else if (rank === 2) {
+                        rankEl.classList.add('bronze');
+                        rankEl.textContent = '🥉';
+                    } else {
+                        rankEl.textContent = `#${rank + 1}`;
+                    }
+
+                    // Name cell
+                    const nameEl = document.createElement('div');
+                    nameEl.classList.add('row-name');
+                    nameEl.textContent = entry.name;
+
+                    // Score cell
+                    const scoreEl = document.createElement('div');
+                    scoreEl.classList.add('row-score');
+                    scoreEl.textContent = entry.score;
+
+                    row.appendChild(rankEl);
+                    row.appendChild(nameEl);
+                    row.appendChild(scoreEl);
+                    listEl.appendChild(row);
+                });
+
+            } catch (err) {
+                console.error('Firebase read error:', err);
+                listEl.innerHTML = `
+                    <div class="loading-row">
+                        ⚠️ Couldn't load scores. Check your connection.
+                    </div>`;
+            }
+        }
+
+
+        /* ================================================
+           NEW — SHOW LEADERBOARD WITH LOADING SPINNER
+           Called immediately when the game ends,
+           before Firebase has responded.
+        ================================================ */
+
+        function showLeaderboardLoading(finalScore) {
+            document.getElementById('currentScoreDisplay').textContent =
+                `${currentPlayerName} scored: ${finalScore}`;
+
+            // Show spinner while Firebase does its work
+            const listEl = document.getElementById('leaderboardList');
+            listEl.innerHTML = `
+                <div class="loading-row">
+                    <div class="spinner"></div>
+                    Saving score...
+                </div>`;
+
+            document.getElementById('leaderboardScreen').classList.remove('hidden');
+        }
+
+
+        /* ================================================
+           NEW — HIDE LEADERBOARD AND RESTART
+        ================================================ */
+
+        function hideLeaderboardAndRestart() {
+            document.getElementById('leaderboardScreen').classList.add('hidden');
+            resetGame();
+        }
+
+        /* Any key press on the leaderboard screen restarts */
+        document.addEventListener('keydown', () => {
+            const visible = !document.getElementById('leaderboardScreen')
+                .classList.contains('hidden');
+            if (visible) hideLeaderboardAndRestart();
+        });
+
+        /* Click anywhere on the leaderboard screen restarts */
+        document.getElementById('leaderboardScreen').addEventListener('click', () => {
+            hideLeaderboardAndRestart();
+        });
+
+
+        /* ================================================
+           NEW — WELCOME SCREEN: INPUT ERROR HELPER
+
+           Triggers the red border + shake animation
+           and writes the error message below the input.
+           Auto-clears after 2.5 seconds.
+        ================================================ */
+
+        function showInputError(message) {
+            const input    = document.getElementById('playerNameInput');
+            const errorMsg = document.getElementById('nameErrorMsg');
+
+            // Write the error text
+            errorMsg.textContent = message;
+
+            // Add both CSS classes at the same time
+            input.classList.add('input-error', 'shake');
+
+            /*
+                Remove just the shake class after the
+                animation finishes (0.55 s) so it can
+                be re-triggered if they try again.
+                The red border stays until they clear the error.
+            */
+            setTimeout(() => {
+                input.classList.remove('shake');
+            }, 600);
+
+            /*
+                After 2.5 s: clear the message and
+                remove the red border entirely.
+            */
+            setTimeout(() => {
+                errorMsg.textContent = '';
+                input.classList.remove('input-error');
+            }, 2500);
+        }
+
+
+        /* ================================================
+           NEW — WELCOME SCREEN: handleStartGame
+           
+           Now async because it needs to await the
+           Firestore name-check before proceeding.
+        ================================================ */
+
+        async function handleStartGame() {
+            const input = document.getElementById('playerNameInput');
+            const btn   = document.getElementById('startGameBtn');
+            const name  = input.value.trim();
+
+            /* --- Validation 1: empty name --- */
+            if (name.length === 0) {
+                showInputError('Please enter a name!');
+                return;
+            }
+
+            /*
+                Disable the button and show a short checking
+                message while we query Firebase.
+                This prevents double-clicks.
+            */
+            btn.disabled    = true;
+            btn.textContent = 'Checking...';
+
+            try {
+                const taken = await isNameTaken(name);
+
+                if (taken) {
+                    /*
+                        Name already exists in Firestore.
+                        Show error, shake input, re-enable button.
+                    */
+                    showInputError('Name already in use — please try a different/creative name!');
+                    btn.disabled    = false;
+                    btn.textContent = 'Enter the Arena';
+                    return;
+                }
+
+                /*
+                    Name is free — proceed into the game.
+                */
+                currentPlayerName = name;
+                document.getElementById('welcomeScreen').classList.add('hidden');
+                resetGame();
+
+            } catch (err) {
+                /*
+                    Firebase check failed (network error etc).
+                    Let the player through rather than blocking them.
+                    The score will still attempt to save later.
+                */
+                console.warn('Name check failed, proceeding anyway:', err);
+                currentPlayerName = name;
+                document.getElementById('welcomeScreen').classList.add('hidden');
+                resetGame();
+            }
+        }
+
+        /* Button click */
+        document.getElementById('startGameBtn')
+            .addEventListener('click', handleStartGame);
+
+        /* Enter key in the name input */
+        document.getElementById('playerNameInput')
+            .addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleStartGame();
+            });
+
+        /* Auto-focus name input on page load */
+        window.addEventListener('load', () => {
+            document.getElementById('playerNameInput').focus();
+        });
+
+        /*
+            Game loop is NOT started here.
+            It starts inside resetGame() which is called
+            by handleStartGame() after name is validated.
+        */
+
+    </script>
+</body>
+</html>
