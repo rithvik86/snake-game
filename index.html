@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 3px solid white;
+            background-color: #111;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .info {
+            color: white;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            font-size: 14px;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 30px;
+            font-size: 16px;
+            background-color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #ddd;
+            transform: scale(1.05);
+        }
+
+        .game-over {
+            color: #ff6b6b;
+            font-size: 20px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐍 Snake Game</h1>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="info">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="controls">Use ARROW KEYS or WASD to move</div>
+            <button onclick="location.reload()">New Game</button>
+        </div>
+        <div class="game-over" id="gameOverText"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverText = document.getElementById('gameOverText');
+
+        // Game variables
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+        
+        let snake = [{ x: 10, y: 10 }];
+        let apple = { x: 15, y: 15 };
+        let dx = 1; // Direction x
+        let dy = 0; // Direction y
+        let nextDx = 1;
+        let nextDy = 0;
+        let score = 0;
+        let gameOver = false;
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch(e.key.toLowerCase()) {
+                case 'arrowup':
+                case 'w':
+                    if (dy === 0) { nextDx = 0; nextDy = -1; }
+                    break;
+                case 'arrowdown':
+                case 's':
+                    if (dy === 0) { nextDx = 0; nextDy = 1; }
+                    break;
+                case 'arrowleft':
+                case 'a':
+                    if (dx === 0) { nextDx = -1; nextDy = 0; }
+                    break;
+                case 'arrowright':
+                case 'd':
+                    if (dx === 0) { nextDx = 1; nextDy = 0; }
+                    break;
+            }
+        });
+
+        function update() {
+            if (gameOver) return;
+
+            dx = nextDx;
+            dy = nextDy;
+
+            // Calculate new head position
+            const head = snake[0];
+            const newHead = {
+                x: head.x + dx,
+                y: head.y + dy
+            };
+
+            // Check wall collision
+            if (newHead.x < 0 || newHead.x >= tileCount || newHead.y < 0 || newHead.y >= tileCount) {
+                endGame();
+                return;
+            }
+
+            // Check self collision
+            for (let segment of snake) {
+                if (newHead.x === segment.x && newHead.y === segment.y) {
+                    endGame();
+                    return;
+                }
+            }
+
+            snake.unshift(newHead);
+
+            // Check apple collision
+            if (newHead.x === apple.x && newHead.y === apple.y) {
+                score += 10;
+                scoreDisplay.textContent = score;
+                spawnApple();
+            } else {
+                snake.pop();
+            }
+        }
+
+        function spawnApple() {
+            let newApple;
+            let collision;
+            
+            do {
+                collision = false;
+                newApple = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+
+                // Make sure apple doesn't spawn on snake
+                for (let segment of snake) {
+                    if (newApple.x === segment.x && newApple.y === segment.y) {
+                        collision = true;
+                        break;
+                    }
+                }
+            } while (collision);
+
+            apple = newApple;
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid (optional, helps visualize)
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= tileCount; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * gridSize, 0);
+                ctx.lineTo(i * gridSize, canvas.height);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i * gridSize);
+                ctx.lineTo(canvas.width, i * gridSize);
+                ctx.stroke();
+            }
+
+            // Draw snake
+            snake.forEach((segment, index) => {
+                if (index === 0) {
+                    // Head - brighter
+                    ctx.fillStyle = '#00ff00';
+                } else {
+                    // Body - slightly darker
+                    ctx.fillStyle = '#00cc00';
+                }
+                ctx.fillRect(
+                    segment.x * gridSize + 1,
+                    segment.y * gridSize + 1,
+                    gridSize - 2,
+                    gridSize - 2
+                );
+            });
+
+            // Draw apple
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(
+                apple.x * gridSize + gridSize / 2,
+                apple.y * gridSize + gridSize / 2,
+                gridSize / 2 - 1,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+
+        function endGame() {
+            gameOver = true;
+            gameOverText.textContent = `Game Over! Final Score: ${score}`;
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+        }
+
+        // Start game
+        setInterval(gameLoop, 100); // 100ms per frame = medium speed
+    </script>
+</body>
+</html>

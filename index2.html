@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+
+        /* ================================
+           ORIGINAL STYLES - UNCHANGED
+        ================================ */
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 3px solid white;
+            background-color: #111;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .info {
+            color: white;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            font-size: 14px;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 30px;
+            font-size: 16px;
+            background-color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #ddd;
+            transform: scale(1.05);
+        }
+
+        .game-over {
+            color: #ff6b6b;
+            font-size: 20px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* ================================
+           NEW - OVERLAY SCREENS
+           Both screens share this base.
+           Fixed means it sits on top of
+           everything, covering the page.
+        ================================ */
+
+        .overlay-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            /* Purple-tinted glass blur matching your gradient theme */
+            background: rgba(80, 50, 140, 0.45);
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+        }
+
+        /* ================================
+           NEW - THE GLASS CARD
+           The frosted box in the centre
+           of each overlay screen
+        ================================ */
+
+        .glass-card {
+            /* Semi-transparent white tinted purple */
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            padding: 45px 55px;
+            text-align: center;
+            width: 90%;
+            max-width: 480px;
+            /* Layered shadow - outer dark, inner purple glow */
+            box-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.45),
+                0 0 60px rgba(102, 126, 234, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            /* Slide up and fade in when it appears */
+            animation: slideUp 0.6s ease forwards;
+        }
+
+        /* Card entrance animation */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(25px) scale(0.97);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* ================================
+           NEW - WELCOME SCREEN TEXT
+        ================================ */
+
+        .welcome-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffffff;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            /* White glow so it pops on the blurred background */
+            text-shadow:
+                0 0 20px rgba(255, 255, 255, 0.5),
+                0 0 40px rgba(102, 126, 234, 0.6);
+        }
+
+        .welcome-subtitle {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.70);
+            line-height: 1.7;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+
+        /* ================================
+           NEW - NAME INPUT BOX
+        ================================ */
+
+        .name-input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 1rem;
+            font-family: Arial, sans-serif;
+            /* Purple-tinted transparent background */
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.30);
+            border-radius: 10px;
+            color: #ffffff;
+            text-align: center;
+            letter-spacing: 2px;
+            outline: none;
+            margin-bottom: 16px;
+            /* Smooth colour transition on focus */
+            transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+            /* Sizing included inside the width (no overflow) */
+            box-sizing: border-box;
+        }
+
+        /* When the user clicks into the input */
+        .name-input:focus {
+            border-color: rgba(255, 255, 255, 0.70);
+            background: rgba(102, 126, 234, 0.25);
+            box-shadow: 0 0 18px rgba(102, 126, 234, 0.4);
+        }
+
+        .name-input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+            letter-spacing: 1px;
+        }
+
+        /* ================================
+           NEW - START / ENTER BUTTON
+           Matches the white button style
+           from your original code but with
+           a purple gradient to fit the theme
+        ================================ */
+
+        .enter-btn {
+            width: 100%;
+            padding: 13px;
+            font-size: 1rem;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            letter-spacing: 2px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            /* Purple gradient matching your page background */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 18px rgba(102, 126, 234, 0.5);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .enter-btn:hover {
+            background: linear-gradient(135deg, #7b8ff5 0%, #8a5cb5 100%);
+            transform: scale(1.04);
+            box-shadow: 0 6px 24px rgba(102, 126, 234, 0.65);
+        }
+
+        .enter-btn:active {
+            transform: scale(1.00);
+        }
+
+        /* ================================
+           NEW - LEADERBOARD SCREEN TEXT
+        ================================ */
+
+        .leaderboard-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffffff;
+            letter-spacing: 3px;
+            margin-bottom: 6px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Shows "PlayerName scored: 40" */
+        .score-display {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.80);
+            margin-bottom: 22px;
+            letter-spacing: 1px;
+        }
+
+        /* ================================
+           NEW - LEADERBOARD LIST
+        ================================ */
+
+        .leaderboard-list {
+            width: 100%;
+            max-height: 260px;
+            /* Scroll if more than 10 entries */
+            overflow-y: auto;
+            margin-bottom: 22px;
+            /* Thin purple scrollbar in Firefox */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(102, 126, 234, 0.5) transparent;
+        }
+
+        /* Each player row */
+        .leaderboard-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 14px;
+            margin-bottom: 7px;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            font-size: 0.92rem;
+        }
+
+        /* Highlight YOUR row after you die */
+        .leaderboard-row.current-player {
+            background: rgba(102, 126, 234, 0.25);
+            border-color: rgba(255, 255, 255, 0.35);
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.25);
+        }
+
+        /* Rank column - #1 #2 etc */
+        .row-rank {
+            width: 32px;
+            text-align: left;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 0.85rem;
+        }
+
+        /* Gold silver bronze medals */
+        .row-rank.gold   { color: #ffd700; }
+        .row-rank.silver { color: #c0c0c0; }
+        .row-rank.bronze { color: #cd7f32; }
+
+        /* Player name column */
+        .row-name {
+            flex: 1;
+            text-align: left;
+            padding-left: 10px;
+            color: #ffffff;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+
+        /* Score column on the right */
+        .row-score {
+            color: rgba(255, 255, 255, 0.90);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* "Press any key" blinking hint */
+        .restart-hint {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.45);
+            letter-spacing: 2px;
+            animation: blink 1.8s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 0.35; }
+            50%       { opacity: 1;    }
+        }
+
+        /* ================================
+           NEW - UTILITY
+           .hidden makes any element
+           invisible and removed from layout
+        ================================ */
+
+        .hidden {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐍 Snake Game</h1>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="info">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="controls">Use ARROW KEYS or WASD to move</div>
+
+            <!--
+                CHANGED - button no longer does location.reload()
+                resetGame() is our new JS function defined below
+            -->
+            <button onclick="resetGame()">New Game</button>
+        </div>
+
+        <!--
+            ORIGINAL - game over text div, still here and still works
+        -->
+        <div class="game-over" id="gameOverText"></div>
+    </div>
+
+    <!-- ================================
+         NEW - WELCOME / COVER SCREEN
+         Shown when the page first loads.
+         Hidden once player enters name.
+    ================================ -->
+    <div class="overlay-screen" id="welcomeScreen">
+        <div class="glass-card">
+            <div class="welcome-title">🐍 Hall of Fame</div>
+            <div class="welcome-subtitle">
+                Enter a name the leaderboard won't forget.<br>
+                Welcome to the hall of fame...
+            </div>
+            <input
+                type="text"
+                class="name-input"
+                id="playerNameInput"
+                placeholder="YOUR NAME"
+                maxlength="16"
+                autocomplete="off"
+            />
+            <button class="enter-btn" id="startGameBtn">
+                Enter the Arena
+            </button>
+        </div>
+    </div>
+
+    <!-- ================================
+         NEW - LEADERBOARD / GAME OVER SCREEN
+         Hidden by default.
+         Shown by showLeaderboard() when
+         the snake dies.
+    ================================ -->
+    <div class="overlay-screen hidden" id="leaderboardScreen">
+        <div class="glass-card">
+            <div class="leaderboard-title">💀 Game Over</div>
+            <div class="score-display" id="currentScoreDisplay">
+                You scored: 0
+            </div>
+            <!-- Rows are built dynamically by JavaScript -->
+            <div class="leaderboard-list" id="leaderboardList"></div>
+            <div class="restart-hint">— PRESS ANY KEY OR CLICK TO PLAY AGAIN —</div>
+        </div>
+    </div>
+
+    <script>
+
+        /* ================================
+           ORIGINAL VARIABLES - UNCHANGED
+        ================================ */
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverText = document.getElementById('gameOverText');
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake = [{ x: 10, y: 10 }];
+        let apple = { x: 15, y: 15 };
+        let dx = 1;
+        let dy = 0;
+        let nextDx = 1;
+        let nextDy = 0;
+        let score = 0;
+        let gameOver = false;
+
+        /*
+            NEW VARIABLE
+            Stores the game loop interval reference
+            so we can stop and restart it cleanly
+            instead of using location.reload()
+        */
+        let gameInterval = null;
+
+        /* ================================
+           NEW VARIABLES
+           Player name and localStorage key
+        ================================ */
+
+        let currentPlayerName = '';
+        const STORAGE_KEY = 'snakeLeaderboard';
+
+        /* ================================
+           ORIGINAL - KEYBOARD CONTROLS
+           Completely unchanged
+        ================================ */
+
+        document.addEventListener('keydown', (e) => {
+            switch(e.key.toLowerCase()) {
+                case 'arrowup':
+                case 'w':
+                    if (dy === 0) { nextDx = 0; nextDy = -1; }
+                    break;
+                case 'arrowdown':
+                case 's':
+                    if (dy === 0) { nextDx = 0; nextDy = 1; }
+                    break;
+                case 'arrowleft':
+                case 'a':
+                    if (dx === 0) { nextDx = -1; nextDy = 0; }
+                    break;
+                case 'arrowright':
+                case 'd':
+                    if (dx === 0) { nextDx = 1; nextDy = 0; }
+                    break;
+            }
+        });
+
+        /* ================================
+           ORIGINAL - UPDATE
+           Completely unchanged
+        ================================ */
+
+        function update() {
+            if (gameOver) return;
+
+            dx = nextDx;
+            dy = nextDy;
+
+            const head = snake[0];
+            const newHead = {
+                x: head.x + dx,
+                y: head.y + dy
+            };
+
+            // Wall collision
+            if (newHead.x < 0 || newHead.x >= tileCount || newHead.y < 0 || newHead.y >= tileCount) {
+                endGame();
+                return;
+            }
+
+            // Self collision
+            for (let segment of snake) {
+                if (newHead.x === segment.x && newHead.y === segment.y) {
+                    endGame();
+                    return;
+                }
+            }
+
+            snake.unshift(newHead);
+
+            // Apple collision
+            if (newHead.x === apple.x && newHead.y === apple.y) {
+                score += 10;
+                scoreDisplay.textContent = score;
+                spawnApple();
+            } else {
+                snake.pop();
+            }
+        }
+
+        /* ================================
+           ORIGINAL - SPAWN APPLE
+           Completely unchanged
+        ================================ */
+
+        function spawnApple() {
+            let newApple;
+            let collision;
+
+            do {
+                collision = false;
+                newApple = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+
+                for (let segment of snake) {
+                    if (newApple.x === segment.x && newApple.y === segment.y) {
+                        collision = true;
+                        break;
+                    }
+                }
+            } while (collision);
+
+            apple = newApple;
+        }
+
+        /* ================================
+           ORIGINAL - DRAW
+           Completely unchanged
+        ================================ */
+
+        function draw() {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= tileCount; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * gridSize, 0);
+                ctx.lineTo(i * gridSize, canvas.height);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i * gridSize);
+                ctx.lineTo(canvas.width, i * gridSize);
+                ctx.stroke();
+            }
+
+            snake.forEach((segment, index) => {
+                ctx.fillStyle = index === 0 ? '#00ff00' : '#00cc00';
+                ctx.fillRect(
+                    segment.x * gridSize + 1,
+                    segment.y * gridSize + 1,
+                    gridSize - 2,
+                    gridSize - 2
+                );
+            });
+
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(
+                apple.x * gridSize + gridSize / 2,
+                apple.y * gridSize + gridSize / 2,
+                gridSize / 2 - 1,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+
+        /* ================================
+           ORIGINAL endGame - MODIFIED
+           Only change: added showLeaderboard()
+           call at the end instead of just
+           setting text. The text still shows
+           behind the overlay too.
+        ================================ */
+
+        function endGame() {
+            gameOver = true;
+            // Original line still here
+            gameOverText.textContent = `Game Over! Final Score: ${score}`;
+            // NEW - stop the interval so the loop doesn't keep running
+            clearInterval(gameInterval);
+            // NEW - show our leaderboard overlay with the final score
+            showLeaderboard(score);
+        }
+
+        /* ================================
+           ORIGINAL gameLoop - UNCHANGED
+        ================================ */
+
+        function gameLoop() {
+            update();
+            draw();
+        }
+
+        /* ================================
+           NEW - resetGame
+           Replaces location.reload()
+           Resets all game variables back
+           to their starting values and
+           starts a fresh interval loop
+        ================================ */
+
+        function resetGame() {
+            // Reset all original game variables
+            snake    = [{ x: 10, y: 10 }];
+            apple    = { x: 15, y: 15 };
+            dx       = 1;
+            dy       = 0;
+            nextDx   = 1;
+            nextDy   = 0;
+            score    = 0;
+            gameOver = false;
+
+            // Reset the score display and clear the game over text
+            scoreDisplay.textContent = '0';
+            gameOverText.textContent = '';
+
+            // Stop any existing interval before starting a new one
+            // (prevents double-speed bug if called twice)
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 100);
+        }
+
+        /* ================================
+           NEW - localStorage HELPERS
+        ================================ */
+
+        /*
+            loadLeaderboard:
+            Reads the saved scores from the browser.
+            localStorage stores strings, so we
+            parse it back into a JS array.
+            Returns empty array if nothing saved yet.
+        */
+        function loadLeaderboard() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        /*
+            saveScore:
+            Adds the new score, sorts highest first,
+            trims to top 10, saves back to localStorage.
+            Returns the updated top 10 array.
+        */
+        function saveScore(name, newScore) {
+            const board = loadLeaderboard();
+            board.push({ name: name, score: newScore });
+            board.sort((a, b) => b.score - a.score);
+            const top10 = board.slice(0, 10);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(top10));
+            return top10;
+        }
+
+        /* ================================
+           NEW - SHOW LEADERBOARD OVERLAY
+           Called from endGame()
+        ================================ */
+
+        function showLeaderboard(finalScore) {
+            // Save score and get back sorted top 10
+            const board = saveScore(currentPlayerName, finalScore);
+
+            // Update the "PlayerName scored: X" line
+            document.getElementById('currentScoreDisplay').textContent =
+                `${currentPlayerName} scored: ${finalScore}`;
+
+            // Get the list container and clear any previous rows
+            const listEl = document.getElementById('leaderboardList');
+            listEl.innerHTML = '';
+
+            // Build one row per entry
+            board.forEach((entry, index) => {
+                const row = document.createElement('div');
+                row.classList.add('leaderboard-row');
+
+                /*
+                    Highlight the current player's row.
+                    We match on both name AND score because
+                    the same player could have multiple entries.
+                */
+                if (entry.name === currentPlayerName && entry.score === finalScore) {
+                    row.classList.add('current-player');
+                }
+
+                // --- Rank cell ---
+                const rankEl = document.createElement('div');
+                rankEl.classList.add('row-rank');
+                if (index === 0) {
+                    rankEl.classList.add('gold');
+                    rankEl.textContent = '🥇';
+                } else if (index === 1) {
+                    rankEl.classList.add('silver');
+                    rankEl.textContent = '🥈';
+                } else if (index === 2) {
+                    rankEl.classList.add('bronze');
+                    rankEl.textContent = '🥉';
+                } else {
+                    rankEl.textContent = `#${index + 1}`;
+                }
+
+                // --- Name cell ---
+                const nameEl = document.createElement('div');
+                nameEl.classList.add('row-name');
+                nameEl.textContent = entry.name;
+
+                // --- Score cell ---
+                const scoreEl = document.createElement('div');
+                scoreEl.classList.add('row-score');
+                scoreEl.textContent = entry.score;
+
+                row.appendChild(rankEl);
+                row.appendChild(nameEl);
+                row.appendChild(scoreEl);
+                listEl.appendChild(row);
+            });
+
+            // Show the overlay
+            document.getElementById('leaderboardScreen').classList.remove('hidden');
+        }
+
+        /* ================================
+           NEW - HIDE LEADERBOARD
+           and restart the game
+        ================================ */
+
+        function hideLeaderboardAndRestart() {
+            document.getElementById('leaderboardScreen').classList.add('hidden');
+            resetGame();
+        }
+
+        /* ================================
+           NEW - LEADERBOARD RESTART LISTENERS
+           Any key press OR click on the
+           leaderboard screen restarts
+        ================================ */
+
+        document.addEventListener('keydown', (e) => {
+            const leaderboardVisible = !document.getElementById('leaderboardScreen')
+                .classList.contains('hidden');
+            if (leaderboardVisible) {
+                hideLeaderboardAndRestart();
+            }
+        });
+
+        document.getElementById('leaderboardScreen').addEventListener('click', () => {
+            hideLeaderboardAndRestart();
+        });
+
+        /* ================================
+           NEW - WELCOME SCREEN LOGIC
+        ================================ */
+
+        /*
+            handleStartGame:
+            Reads the name input, validates it
+            is not empty, saves it, hides the
+            welcome screen and starts the game.
+        */
+        function handleStartGame() {
+            const input = document.getElementById('playerNameInput');
+            const name  = input.value.trim();
+
+            // If empty - shake the border red to signal error
+            if (name.length === 0) {
+                input.style.borderColor = 'rgba(255, 107, 107, 0.9)';
+                input.placeholder = 'Please enter a name!';
+                // Reset back to normal after 1.5 seconds
+                setTimeout(() => {
+                    input.style.borderColor = 'rgba(255, 255, 255, 0.30)';
+                    input.placeholder = 'YOUR NAME';
+                }, 1500);
+                return;
+            }
+
+            currentPlayerName = name;
+
+            // Hide the welcome screen
+            document.getElementById('welcomeScreen').classList.add('hidden');
+
+            // Start the game loop for the first time
+            resetGame();
+        }
+
+        // Button click
+        document.getElementById('startGameBtn').addEventListener('click', handleStartGame);
+
+        // Enter key in the name input
+        document.getElementById('playerNameInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleStartGame();
+            }
+        });
+
+        /*
+            Auto-focus the name input when the page loads
+            so the user can just start typing immediately
+        */
+        window.addEventListener('load', () => {
+            document.getElementById('playerNameInput').focus();
+        });
+
+        /*
+            NOTE - We no longer call setInterval here at the bottom.
+            The game loop is now started inside resetGame()
+            which is called by handleStartGame().
+            This prevents the snake from moving before
+            the player has entered their name.
+        */
+
+    </script>
+</body>
+</html>
