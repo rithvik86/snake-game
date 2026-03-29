@@ -838,6 +838,7 @@ const MAX_QUEUE  = 2;
     const POWERUP_DURATION = 5000;
 
     let applesEaten = 0;
+    let prevSnake = [{ x:12, y:12 }];
 
 
     /* ====================================================
@@ -933,7 +934,6 @@ const MAX_QUEUE  = 2;
             lastFrameTime = now;
             elapsedTime  += delta;
 
-            // Logic tick — only fires every currentSpeed ms
             if (!gamePaused && !gameOver) {
                 if (now - lastTickTime >= currentSpeed) {
                     lastTickTime = now;
@@ -941,8 +941,11 @@ const MAX_QUEUE  = 2;
                 }
             }
 
-            // Render every frame regardless
-            draw(elapsedTime);
+            // Calculate interpolation factor 0.0 -> 1.0
+            // between the last tick and the next tick
+            const tickProgress = Math.min(1, (now - lastTickTime) / currentSpeed);
+
+            draw(elapsedTime, tickProgress);
 
             rafId = requestAnimationFrame(loop);
         }
@@ -1136,7 +1139,7 @@ const MAX_QUEUE  = 2;
             ? inputQueue[inputQueue.length - 1]
             : { dx, dy };
 
-        let newDx = last.dx, newDy = last.dy;
+            let newDx = last.dx, newDy = last.dy;
 
         switch (e.key.toLowerCase()) {
             case 'arrowup':    case 'w': if (last.dy === 0)  { newDx = 0;  newDy = -1; } break;
@@ -1169,6 +1172,9 @@ const MAX_QUEUE  = 2;
     ==================================================== */
 
     function update() {
+        // Save previous positions for interpolation
+        prevSnake = snake.map(seg => ({ ...seg }));
+
         // Drain one input from the queue each tick
         if (inputQueue.length > 0) {
             const next = inputQueue.shift();
@@ -1255,7 +1261,7 @@ const MAX_QUEUE  = 2;
        t = elapsed time in ms — used for smooth animations
     ==================================================== */
 
-    function draw(t = 0) {
+    function draw(t = 0, tickProgress = 1) {
         drawGlassBackground();
         drawGrid();
 
@@ -1263,7 +1269,7 @@ const MAX_QUEUE  = 2;
         if (currentTheme === 'lightning') {
             if (lightningBolt && lightningBolt.opacity > 0) {
                 drawLightningBolt(lightningBolt);
-                lightningBolt.opacity -= 0.045;   // fade over ~22 frames ≈ 370 ms
+                lightningBolt.opacity -= 0.045;
                 if (lightningBolt.opacity <= 0) lightningBolt = null;
             }
             // Screen flash overlay fade
@@ -1281,8 +1287,15 @@ const MAX_QUEUE  = 2;
         // Powerup particles — spawned every few frames
         if (powerupActive && Math.floor(t / 16) % 3 === 0) spawnPowerupParticles();
 
-        // Snake segments
-        snake.forEach((seg, i) => drawSnakeSegment(seg, i, t));
+        // Snake segments — smoothly interpolated between ticks
+        snake.forEach((seg, i) => {
+            const prev = prevSnake[i] || seg;
+            const interpSeg = {
+                x: prev.x + (seg.x - prev.x) * tickProgress,
+                y: prev.y + (seg.y - prev.y) * tickProgress
+            };
+            drawSnakeSegment(interpSeg, i, t);
+        });
 
         // Apple
         drawApple(t);
@@ -1683,6 +1696,7 @@ const MAX_QUEUE  = 2;
 
     function resetGame() {
         snake        = [{ x:12, y:12 }];
+        prevSnake    = [{ x:12, y:12 }];
         dx=1; dy=0;
         inputQueue.length = 0;   // clear queue on reset
         score        = 0;
