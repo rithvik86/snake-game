@@ -1,0 +1,1753 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+
+        /* ================================
+           BASE / BODY
+        ================================ */
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            transition: background 0.5s ease;
+        }
+
+        /* ================================
+           THEME BACKGROUNDS
+        ================================ */
+
+        body.theme-none      { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        body.theme-lightning { background: #0a0a1a; }
+        body.theme-floral    { background: #ffe6f0; }
+        body.theme-fire      { background: #3a0a00; }
+        body.theme-shark     { background: #001a0f; }
+
+
+        /* ================================
+           BACKGROUND LAYERS
+        ================================ */
+
+        .bg-layer {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Kratos */
+        .bg-kratos {
+            background-image: url('kratos.jpg');
+            background-size: cover;
+            background-position: center 5%;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+        body.theme-lightning .bg-kratos { opacity: 0.55; }
+
+        /* Bowser */
+        .bg-bowser {
+            background-image: url('bowser.jpg');
+            background-size: 38%;
+            background-repeat: no-repeat;
+            background-position: center center;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+        body.theme-fire .bg-bowser { opacity: 0.85; }
+
+        /* Shark */
+        .bg-shark {
+            background-image: url('shark.jpg');
+            background-size: cover;
+            background-position: center center;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+        body.theme-shark .bg-shark { opacity: 0.45; }
+
+        /* Lightning overlay */
+        .bg-lightning-overlay { opacity: 0; transition: opacity 0.8s ease; }
+        body.theme-lightning .bg-lightning-overlay { opacity: 1; }
+
+        /* Floral */
+        .bg-floral { opacity: 0; transition: opacity 0.8s ease; overflow: hidden; }
+        body.theme-floral .bg-floral { opacity: 1; }
+
+        /* ================================
+           CONTAINER
+        ================================ */
+
+        .container {
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            transition: color 0.5s ease;
+        }
+        body.theme-floral h1 {
+            color: #d63384;
+            text-shadow: 0 2px 8px rgba(214,51,132,0.3);
+        }
+
+        /* ================================
+           CANVAS
+        ================================ */
+
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .canvas-frost {
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            backdrop-filter: blur(6px) saturate(140%);
+            -webkit-backdrop-filter: blur(6px) saturate(140%);
+            z-index: 0;
+            transition: background 0.5s ease;
+        }
+
+        body.theme-lightning .canvas-frost { background: rgba(8,  18,  50,  0.42); }
+        body.theme-floral    .canvas-frost { background: rgba(60,  0,  30,  0.38); }
+        body.theme-fire      .canvas-frost { background: rgba(40,  8,   0,  0.40); }
+        body.theme-shark     .canvas-frost { background: rgba( 0, 28,  14,  0.38); }
+        body.theme-none      .canvas-frost { background: rgba(10, 10,  20,  0.45); }
+
+        canvas {
+            position: relative;
+            z-index: 1;
+            display: block;
+            margin: 0 auto;
+            border-radius: 12px;
+            background: transparent;
+            transition: box-shadow 0.5s ease;
+        }
+
+        body.theme-lightning canvas {
+            box-shadow:
+                0 0 0 2px rgba(79,195,247,0.55),
+                0 0 30px rgba(79,195,247,0.40),
+                0 0 60px rgba(79,195,247,0.15);
+        }
+        body.theme-floral canvas {
+            box-shadow:
+                0 0 0 2px rgba(255,128,171,0.55),
+                0 0 30px rgba(255,128,171,0.40),
+                0 0 60px rgba(255,128,171,0.15);
+        }
+        body.theme-fire canvas {
+            box-shadow:
+                0 0 0 2px rgba(255,109,0,0.55),
+                0 0 30px rgba(255,109,0,0.40),
+                0 0 60px rgba(255,109,0,0.15);
+        }
+        body.theme-shark canvas {
+            box-shadow:
+                0 0 0 2px rgba(0,230,118,0.55),
+                0 0 30px rgba(0,230,118,0.40),
+                0 0 60px rgba(0,230,118,0.15);
+        }
+
+        /* ================================
+           INFO / SCORE
+        ================================ */
+
+        .info { color: white; margin-top: 20px; font-size: 18px; }
+        body.theme-floral .info { color: #d63384; }
+        .score    { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .controls { font-size: 14px; margin-top: 10px; opacity: 0.8; }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 30px;
+            font-size: 16px;
+            background-color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        button:hover { background-color: #ddd; transform: scale(1.05); }
+
+        .game-over {
+            color: #ff6b6b;
+            font-size: 20px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* ================================
+           PAUSE INDICATOR
+        ================================ */
+
+        .pause-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-40px);
+            z-index: 50;
+            background: rgba(0,0,0,0.70);
+            border: 1px solid rgba(255,255,255,0.30);
+            border-radius: 20px;
+            padding: 5px 16px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.80);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
+        }
+        .pause-indicator.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ================================
+           POWERUP BANNER
+        ================================ */
+
+        .powerup-banner {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-80px);
+            z-index: 500;
+            background: rgba(0,0,0,0.82);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 16px;
+            padding: 12px 32px;
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+        .powerup-banner.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0px);
+        }
+        body.theme-lightning .powerup-banner { border-color:#4fc3f7; box-shadow:0 0 30px rgba(79,195,247,0.7);  color:#4fc3f7; }
+        body.theme-floral    .powerup-banner { border-color:#ff80ab; box-shadow:0 0 30px rgba(255,128,171,0.7); color:#ff80ab; }
+        body.theme-fire      .powerup-banner { border-color:#ff6d00; box-shadow:0 0 30px rgba(255,109,0,0.7);   color:#ff6d00; }
+        body.theme-shark     .powerup-banner { border-color:#00e676; box-shadow:0 0 30px rgba(0,230,118,0.7);   color:#00e676; }
+
+        /* ================================
+           CHANGE THEME BUTTON
+        ================================ */
+
+        .change-theme-btn {
+            position: fixed;
+            bottom: 22px;
+            left: 22px;
+            z-index: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 40px;
+            color: rgba(255,255,255,0.85);
+            font-size: 0.78rem;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: background 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .change-theme-btn.visible { opacity: 1; pointer-events: all; }
+        .change-theme-btn:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.55);
+            transform: scale(1.06);
+            box-shadow: 0 0 16px rgba(255,255,255,0.15);
+        }
+        body.theme-lightning .change-theme-btn { border-color:rgba(79,195,247,0.45);  color:#4fc3f7; }
+        body.theme-floral    .change-theme-btn { border-color:rgba(255,128,171,0.45); color:#ff80ab; }
+        body.theme-fire      .change-theme-btn { border-color:rgba(255,109,0,0.45);   color:#ff8c42; }
+        body.theme-shark     .change-theme-btn { border-color:rgba(0,230,118,0.45);   color:#00e676; }
+        .change-theme-btn .ct-icon { font-size: 1.1rem; }
+
+        /* ================================
+           THEME MODAL
+        ================================ */
+
+        .theme-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 700;
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .theme-modal-backdrop.open { opacity: 1; pointer-events: all; }
+
+        .theme-modal-panel {
+            width: 100%;
+            max-width: 520px;
+            background: rgba(18,18,30,0.92);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-bottom: none;
+            border-radius: 22px 22px 0 0;
+            padding: 28px 32px 36px;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.34,1.2,0.64,1);
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+        }
+        .theme-modal-backdrop.open .theme-modal-panel { transform: translateY(0); }
+
+        .modal-title {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .modal-theme-options { display:flex; gap:10px; justify-content:center; }
+
+        .modal-theme-btn {
+            flex: 1;
+            padding: 12px 6px;
+            font-size: 0.80rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.07);
+            color: rgba(255,255,255,0.70);
+            transition: all 0.22s ease;
+            margin-top: 0;
+        }
+        .modal-theme-btn:hover { background:rgba(255,255,255,0.15); color:white; transform:scale(1.05); }
+        .modal-theme-btn.selected { color:white; background:rgba(255,255,255,0.18); }
+        .modal-theme-btn.t-lightning.selected { border-color:#4fc3f7; box-shadow:0 0 12px rgba(79,195,247,0.5);  color:#4fc3f7; }
+        .modal-theme-btn.t-floral.selected    { border-color:#ff80ab; box-shadow:0 0 12px rgba(255,128,171,0.5); color:#ff80ab; }
+        .modal-theme-btn.t-fire.selected      { border-color:#ff6d00; box-shadow:0 0 12px rgba(255,109,0,0.5);   color:#ff6d00; }
+        .modal-theme-btn.t-shark.selected     { border-color:#00e676; box-shadow:0 0 12px rgba(0,230,118,0.5);   color:#00e676; }
+
+        .modal-go-btn {
+            display: block;
+            width: 100%;
+            margin-top: 16px;
+            padding: 13px;
+            font-size: 1rem;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            letter-spacing: 3px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 18px rgba(102,126,234,0.5);
+            transition: opacity 0.25s ease, transform 0.2s, box-shadow 0.2s;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal-go-btn.visible        { opacity:1; pointer-events:all; }
+        .modal-go-btn:hover          { transform:scale(1.04); box-shadow:0 6px 24px rgba(102,126,234,0.65); }
+        .modal-go-btn:active         { transform:scale(1.00); }
+        .modal-go-btn.go-lightning   { background:linear-gradient(135deg,#0288d1,#4fc3f7); box-shadow:0 4px 18px rgba(79,195,247,0.5); }
+        .modal-go-btn.go-floral      { background:linear-gradient(135deg,#c2185b,#ff80ab); box-shadow:0 4px 18px rgba(255,128,171,0.5); }
+        .modal-go-btn.go-fire        { background:linear-gradient(135deg,#bf360c,#ff6d00); box-shadow:0 4px 18px rgba(255,109,0,0.5); }
+        .modal-go-btn.go-shark       { background:linear-gradient(135deg,#00695c,#00e676); box-shadow:0 4px 18px rgba(0,230,118,0.5); }
+
+        .modal-close-hint {
+            text-align: center;
+            margin-top: 14px;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.30);
+            letter-spacing: 1.5px;
+        }
+
+        /* ================================
+           OVERLAY SCREENS
+        ================================ */
+
+        .overlay-screen {
+            position: fixed;
+            top:0; left:0;
+            width:100%; height:100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(4px) saturate(130%);
+            -webkit-backdrop-filter: blur(4px) saturate(130%);
+        }
+        #leaderboardScreen {
+            background: rgba(0,0,0,0.50);
+            backdrop-filter: blur(8px) saturate(140%);
+            -webkit-backdrop-filter: blur(8px) saturate(140%);
+        }
+
+        /* ================================
+           GLASS CARD
+        ================================ */
+
+        .glass-card {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 20px;
+            padding: 45px 55px;
+            text-align: center;
+            width: 90%;
+            max-width: 480px;
+            box-shadow:
+                0 10px 40px rgba(0,0,0,0.45),
+                0 0 60px rgba(102,126,234,0.15),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+            animation: slideUp 0.6s ease forwards;
+        }
+        @keyframes slideUp {
+            from { opacity:0; transform:translateY(25px) scale(0.97); }
+            to   { opacity:1; transform:translateY(0) scale(1); }
+        }
+
+        /* ================================
+           WELCOME SCREEN
+        ================================ */
+
+        .welcome-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffffff;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(102,126,234,0.6);
+        }
+        .welcome-subtitle {
+            font-size: 0.95rem;
+            color: rgba(255,255,255,0.70);
+            line-height: 1.7;
+            margin-bottom: 24px;
+            font-style: italic;
+        }
+        .theme-label {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.65);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+        .theme-options { display:flex; gap:10px; margin-bottom:20px; justify-content:center; }
+
+        .theme-btn {
+            flex: 1;
+            padding: 10px 6px;
+            font-size: 0.78rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            border: 2px solid rgba(255,255,255,0.25);
+            border-radius: 10px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.75);
+            transition: all 0.25s ease;
+            margin-top: 0;
+        }
+        .theme-btn:hover { background:rgba(255,255,255,0.18); transform:scale(1.05); color:white; }
+        .theme-btn.selected { border-color:white; background:rgba(255,255,255,0.22); color:white; box-shadow:0 0 14px rgba(255,255,255,0.3); transform:scale(1.07); }
+        .theme-btn.t-lightning.selected { border-color:#4fc3f7; box-shadow:0 0 14px rgba(79,195,247,0.5);  color:#4fc3f7; }
+        .theme-btn.t-floral.selected    { border-color:#ff80ab; box-shadow:0 0 14px rgba(255,128,171,0.5); color:#ff80ab; }
+        .theme-btn.t-fire.selected      { border-color:#ff6d00; box-shadow:0 0 14px rgba(255,109,0,0.5);   color:#ff6d00; }
+        .theme-btn.t-shark.selected     { border-color:#00e676; box-shadow:0 0 14px rgba(0,230,118,0.5);   color:#00e676; }
+
+        /* ================================
+           LEADERBOARD THEME BUTTONS
+        ================================ */
+
+        .lb-theme-label {
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.50);
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .lb-theme-options {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 18px;
+        }
+        .lb-theme-btn {
+            flex: 1;
+            padding: 8px 4px;
+            font-size: 0.74rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            border: 2px solid rgba(255,255,255,0.20);
+            border-radius: 10px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.07);
+            color: rgba(255,255,255,0.65);
+            transition: all 0.22s ease;
+            margin-top: 0;
+        }
+        .lb-theme-btn:hover { background:rgba(255,255,255,0.15); color:white; transform:scale(1.04); }
+        .lb-theme-btn.selected { color:white; background:rgba(255,255,255,0.16); }
+        .lb-theme-btn.t-lightning.selected { border-color:#4fc3f7; box-shadow:0 0 10px rgba(79,195,247,0.5);  color:#4fc3f7; }
+        .lb-theme-btn.t-floral.selected    { border-color:#ff80ab; box-shadow:0 0 10px rgba(255,128,171,0.5); color:#ff80ab; }
+        .lb-theme-btn.t-fire.selected      { border-color:#ff6d00; box-shadow:0 0 10px rgba(255,109,0,0.5);   color:#ff6d00; }
+        .lb-theme-btn.t-shark.selected     { border-color:#00e676; box-shadow:0 0 10px rgba(0,230,118,0.5);   color:#00e676; }
+
+        /* ================================
+           NAME INPUT
+        ================================ */
+
+        .name-input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 1rem;
+            font-family: Arial, sans-serif;
+            background: rgba(102,126,234,0.15);
+            border: 1px solid rgba(255,255,255,0.30);
+            border-radius: 10px;
+            color: #ffffff;
+            text-align: center;
+            letter-spacing: 2px;
+            outline: none;
+            margin-bottom: 6px;
+            transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+            box-sizing: border-box;
+        }
+        .name-input:focus { border-color:rgba(255,255,255,0.70); background:rgba(102,126,234,0.25); box-shadow:0 0 18px rgba(102,126,234,0.4); }
+        .name-input::placeholder { color:rgba(255,255,255,0.35); letter-spacing:1px; }
+        .name-input.input-error  { border-color:rgba(255,107,107,0.9) !important; box-shadow:0 0 14px rgba(255,107,107,0.4) !important; }
+
+        @keyframes shake {
+            0%  {transform:translateX(0);}   15%{transform:translateX(-7px);}
+            30% {transform:translateX(7px);} 45%{transform:translateX(-5px);}
+            60% {transform:translateX(5px);} 75%{transform:translateX(-3px);}
+            90% {transform:translateX(3px);} 100%{transform:translateX(0);}
+        }
+        .name-input.shake { animation:shake 0.55s ease forwards; }
+
+        .input-error-msg {
+            font-size: 0.80rem;
+            color: rgba(255,107,107,0.95);
+            letter-spacing: 0.5px;
+            min-height: 18px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .enter-btn {
+            width: 100%;
+            padding: 13px;
+            font-size: 1rem;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            letter-spacing: 2px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 18px rgba(102,126,234,0.5);
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+            margin-top: 0;
+        }
+        .enter-btn:hover { background:linear-gradient(135deg,#7b8ff5 0%,#8a5cb5 100%); transform:scale(1.04); box-shadow:0 6px 24px rgba(102,126,234,0.65); }
+        .enter-btn:active { transform:scale(1.00); }
+
+        /* ================================
+           LEADERBOARD
+        ================================ */
+
+        .leaderboard-title { font-size:1.8rem; font-weight:bold; color:#fff; letter-spacing:3px; margin-bottom:6px; text-shadow:0 0 20px rgba(255,255,255,0.4); }
+        .score-display     { font-size:1rem; color:rgba(255,255,255,0.80); margin-bottom:22px; letter-spacing:1px; }
+        .leaderboard-list  { width:100%; max-height:220px; overflow-y:auto; margin-bottom:16px; scrollbar-width:thin; scrollbar-color:rgba(102,126,234,0.5) transparent; }
+
+        .leaderboard-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 14px;
+            margin-bottom: 7px;
+            border-radius: 9px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.10);
+            font-size: 0.92rem;
+        }
+        .leaderboard-row.current-player { background:rgba(102,126,234,0.25); border-color:rgba(255,255,255,0.35); box-shadow:0 0 10px rgba(102,126,234,0.25); }
+        .row-rank  { width:32px; text-align:left; font-weight:bold; color:rgba(255,255,255,0.45); font-size:0.85rem; }
+        .row-rank.gold   { color:#ffd700; }
+        .row-rank.silver { color:#c0c0c0; }
+        .row-rank.bronze { color:#cd7f32; }
+        .row-name  { flex:1; text-align:left; padding-left:10px; color:#fff; letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; }
+        .row-score { color:rgba(255,255,255,0.90); font-weight:bold; letter-spacing:1px; }
+
+        .restart-hint { font-size:0.82rem; color:rgba(255,255,255,0.45); letter-spacing:2px; animation:blink 1.8s ease-in-out infinite; }
+        @keyframes blink { 0%,100%{opacity:0.35;} 50%{opacity:1;} }
+
+        /* ================================
+           UTILITY
+        ================================ */
+
+        .hidden { display:none !important; }
+
+        /* ================================
+           HELLO KITTY — blend out white bg
+        ================================ */
+
+        .hk-corner,
+        .hk-sticker {
+            mix-blend-mode: multiply;
+        }
+
+        /* ================================
+           HELLO KITTY STICKERS
+        ================================ */
+
+        .hk-sticker {
+            position:fixed; pointer-events:none; z-index:1;
+            opacity:0; transition:opacity 0.8s ease;
+            animation:floatBob 4s ease-in-out infinite;
+            user-select:none;
+        }
+        body.theme-floral .hk-sticker { opacity:0.85; }
+        @keyframes floatBob {
+            0%,100%{transform:translateY(0px) rotate(0deg);}
+            25%    {transform:translateY(-8px) rotate(3deg);}
+            50%    {transform:translateY(-4px) rotate(-2deg);}
+            75%    {transform:translateY(-10px) rotate(2deg);}
+        }
+        .hk-sticker:nth-child(2){animation-delay:0.5s;}
+        .hk-sticker:nth-child(3){animation-delay:1.0s;}
+        .hk-sticker:nth-child(4){animation-delay:1.5s;}
+        .hk-sticker:nth-child(5){animation-delay:2.0s;}
+        .hk-sticker:nth-child(6){animation-delay:2.5s;}
+        .hk-sticker:nth-child(7){animation-delay:0.8s;}
+        .hk-sticker:nth-child(8){animation-delay:1.3s;}
+
+        /* ================================
+           HELLO KITTY CORNERS
+        ================================ */
+
+        .hk-corner {
+            position:fixed; width:120px; height:auto;
+            opacity:0; z-index:5; pointer-events:none;
+            transition:opacity 0.8s ease;
+            filter:drop-shadow(0 6px 18px rgba(255,128,171,0.55));
+        }
+        body.theme-floral .hk-corner { opacity:1; }
+        .hk-corner.hk-br { bottom:16px; right:24px; animation:hkBobBR 3.2s ease-in-out infinite; }
+        .hk-corner.hk-bl { bottom:16px; left:24px;  transform:scaleX(-1); animation:hkBobBL 3.0s ease-in-out infinite; animation-delay:0.6s; }
+        .hk-corner.hk-tr { top:16px;    right:24px; animation:hkBobTR 3.4s ease-in-out infinite; animation-delay:1.1s; }
+        .hk-corner.hk-tl { top:16px;    left:24px;  transform:scaleX(-1); animation:hkBobTL 2.9s ease-in-out infinite; animation-delay:1.7s; }
+        @keyframes hkBobBR { 0%,100%{transform:scaleX(1)  translateY(0px)   rotate(-2deg);} 50%{transform:scaleX(1)  translateY(-14px) rotate(2deg);}  }
+        @keyframes hkBobBL { 0%,100%{transform:scaleX(-1) translateY(0px)   rotate(2deg);}  50%{transform:scaleX(-1) translateY(-12px) rotate(-2deg);} }
+        @keyframes hkBobTR { 0%,100%{transform:scaleX(1)  translateY(0px)   rotate(2deg);}  50%{transform:scaleX(1)  translateY(10px)  rotate(-2deg);} }
+        @keyframes hkBobTL { 0%,100%{transform:scaleX(-1) translateY(0px)   rotate(-2deg);} 50%{transform:scaleX(-1) translateY(10px)  rotate(2deg);}  }
+
+        /* ================================
+           POWERUP PARTICLES
+        ================================ */
+
+        .spark-particle  { position:fixed; pointer-events:none; z-index:20; border-radius:50%;             animation:sparkFly   0.6s ease-out forwards; }
+        .petal-particle  { position:fixed; pointer-events:none; z-index:20;                                 animation:petalFall  1.2s ease-out forwards; }
+        .ember-particle  { position:fixed; pointer-events:none; z-index:20; border-radius:50% 50% 30% 30%; animation:emberRise  0.9s ease-out forwards; }
+        .bubble-particle { position:fixed; pointer-events:none; z-index:20; border-radius:50%; border:2px solid rgba(0,230,118,0.8); animation:bubbleRise 1.0s ease-out forwards; }
+
+        @keyframes sparkFly  { 0%{opacity:1;transform:translate(0,0) scale(1);}             100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0.2);} }
+        @keyframes petalFall { 0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);} 100%{opacity:0;transform:translate(var(--tx),var(--ty)) rotate(360deg) scale(0.3);} }
+        @keyframes emberRise { 0%{opacity:1;transform:translate(0,0) scale(1);}             100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0.1);} }
+        @keyframes bubbleRise{ 0%{opacity:0.9;transform:translate(0,0) scale(1);}           100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(1.8);} }
+
+    </style>
+</head>
+<body class="theme-none">
+
+    <!-- Background layers -->
+    <div class="bg-layer bg-kratos"></div>
+    <div class="bg-layer bg-bowser"></div>
+    <div class="bg-layer bg-shark"></div>
+
+    <div class="bg-layer bg-lightning-overlay">
+        <div class="lightning-flash" id="lightningFlash"></div>
+    </div>
+
+    <div class="bg-layer bg-floral" id="floralBg">
+        <div class="hk-sticker" style="top:4%;left:2%;font-size:2.8rem;">🌸</div>
+        <div class="hk-sticker" style="top:8%;left:8%;font-size:2.2rem;">🎀</div>
+        <div class="hk-sticker" style="top:4%;right:2%;font-size:2.8rem;">🌸</div>
+        <div class="hk-sticker" style="top:8%;right:8%;font-size:2.2rem;">🎀</div>
+        <div class="hk-sticker" style="bottom:12%;left:3%;font-size:2.5rem;">🌷</div>
+        <div class="hk-sticker" style="bottom:18%;left:10%;font-size:2rem;">💕</div>
+        <div class="hk-sticker" style="top:40%;left:1%;font-size:2.3rem;">🌺</div>
+        <div class="hk-sticker" style="top:55%;right:2%;font-size:2.5rem;">🌸</div>
+    </div>
+
+    <!-- Hello Kitty corners -->
+    <img src="hellokitty.png" class="hk-corner hk-br" alt="Hello Kitty" />
+    <img src="hellokitty.png" class="hk-corner hk-bl" alt="Hello Kitty" />
+    <img src="hellokitty.png" class="hk-corner hk-tr" alt="Hello Kitty" />
+    <img src="hellokitty.png" class="hk-corner hk-tl" alt="Hello Kitty" />
+
+    <!-- Lightning flash overlay -->
+    <div id="lightningFlashOverlay"
+         style="position:fixed;top:0;left:0;width:100%;height:100%;
+                background:rgba(150,210,255,0.12);pointer-events:none;
+                z-index:3;opacity:0;transition:opacity 0.08s ease;">
+    </div>
+
+    <!-- Change theme button -->
+    <button class="change-theme-btn" id="changeThemeBtn" onclick="openThemeModal()">
+        <span class="ct-icon">🎨</span>
+        <span>CHANGE THEME</span>
+    </button>
+
+    <!-- Theme modal -->
+    <div class="theme-modal-backdrop" id="themeModalBackdrop" onclick="handleModalBackdropClick(event)">
+        <div class="theme-modal-panel" id="themeModalPanel">
+            <div class="modal-title">PICK A THEME — GAME IS PAUSED</div>
+            <div class="modal-theme-options">
+                <button class="modal-theme-btn t-lightning" onclick="selectModalTheme('lightning',this)">⚡ Lightning</button>
+                <button class="modal-theme-btn t-floral"    onclick="selectModalTheme('floral',this)">🌸 Floral</button>
+                <button class="modal-theme-btn t-fire"      onclick="selectModalTheme('fire',this)">🔥 Fire</button>
+                <button class="modal-theme-btn t-shark"     onclick="selectModalTheme('shark',this)">🦈 Shark</button>
+            </div>
+            <button class="modal-go-btn" id="modalGoBtn" onclick="confirmModalTheme()">GO! 🚀</button>
+            <div class="modal-close-hint">TAP OUTSIDE TO CANCEL — GAME STAYS PAUSED</div>
+        </div>
+    </div>
+
+    <!-- Main game UI -->
+    <div class="container">
+        <h1>🐍 Snake Game</h1>
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <div class="canvas-frost" id="canvasFrost"></div>
+            <div class="pause-indicator" id="pauseIndicator">⏸ PAUSED</div>
+            <canvas id="gameCanvas" width="480" height="480"></canvas>
+        </div>
+        <div class="info">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="controls">Use ARROW KEYS or WASD to move</div>
+            <button onclick="resetGame()">New Game</button>
+        </div>
+        <div class="game-over" id="gameOverText"></div>
+    </div>
+
+    <!-- Powerup banner -->
+    <div class="powerup-banner" id="powerupBanner">⚡ POWER UP! ⚡</div>
+
+    <!-- Welcome screen -->
+    <div class="overlay-screen" id="welcomeScreen">
+        <div class="glass-card">
+            <div class="welcome-title">🐍 Hall of Fame</div>
+            <div class="welcome-subtitle">Pick your theme, enter your name,<br>and join the hall of fame!</div>
+            <div class="theme-label">CHOOSE YOUR THEME</div>
+            <div class="theme-options">
+                <button class="theme-btn t-lightning" onclick="selectTheme('lightning',this)">⚡ Lightning</button>
+                <button class="theme-btn t-floral"    onclick="selectTheme('floral',this)">🌸 Floral</button>
+                <button class="theme-btn t-fire"      onclick="selectTheme('fire',this)">🔥 Fire</button>
+                <button class="theme-btn t-shark"     onclick="selectTheme('shark',this)">🦈 Shark</button>
+            </div>
+            <input type="text" class="name-input" id="playerNameInput"
+                   placeholder="YOUR NAME" maxlength="16" autocomplete="off" />
+            <div class="input-error-msg" id="nameErrorMsg"></div>
+            <button class="enter-btn" id="startGameBtn">Enter the Arena</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard screen -->
+    <div class="overlay-screen hidden" id="leaderboardScreen">
+        <div class="glass-card">
+            <div class="leaderboard-title">😵 Game Over</div>
+            <div class="score-display" id="currentScoreDisplay">You scored: 0</div>
+            <div class="leaderboard-list" id="leaderboardList"></div>
+            <div class="lb-theme-label">CHOOSE NEXT THEME</div>
+            <div class="lb-theme-options">
+                <button class="lb-theme-btn t-lightning" onclick="selectLeaderboardTheme('lightning',this)">⚡ Lightning</button>
+                <button class="lb-theme-btn t-floral"    onclick="selectLeaderboardTheme('floral',this)">🌸 Floral</button>
+                <button class="lb-theme-btn t-fire"      onclick="selectLeaderboardTheme('fire',this)">🔥 Fire</button>
+                <button class="lb-theme-btn t-shark"     onclick="selectLeaderboardTheme('shark',this)">🦈 Shark</button>
+            </div>
+            <div class="restart-hint">— PRESS ANY KEY TO PLAY AGAIN —</div>
+        </div>
+    </div>
+
+    <script>
+
+    /* ====================================================
+       SECTION 1 — CANVAS & CORE VARIABLES
+    ==================================================== */
+
+    const canvas       = document.getElementById('gameCanvas');
+    const ctx          = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+    const gameOverText = document.getElementById('gameOverText');
+
+    const gridSize  = 20;
+    const tileCount = canvas.width / gridSize;
+
+    let snake   = [{ x:12, y:12 }];
+    let apple   = { x:18, y:18 };
+    let dx = 1, dy = 0;
+const inputQueue = [];
+const MAX_QUEUE  = 2;
+
+    let score      = 0;
+    let gameOver   = false;
+    let gamePaused = false;
+
+    let currentPlayerName = '';
+    let currentTheme      = '';
+    let pendingModalTheme = '';
+
+    let powerupActive = false;
+    let powerupTimer  = null;
+    const POWERUP_DURATION = 5000;
+
+    let applesEaten = 0;
+
+
+    /* ====================================================
+       SECTION 2 — LOCAL LEADERBOARD
+    ==================================================== */
+
+    let leaderboardData = [];
+
+    function submitScore(name, newScore) {
+        const existing = leaderboardData.find(e => e.name === name);
+        if (!existing) {
+            leaderboardData.push({ name, score: newScore });
+        } else if (newScore > existing.score) {
+            existing.score = newScore;
+        }
+        leaderboardData.sort((a,b) => b.score - a.score);
+    }
+
+    function renderLeaderboard(playerName) {
+        const listEl = document.getElementById('leaderboardList');
+        listEl.innerHTML = '';
+        if (leaderboardData.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center;padding:20px 0;
+                color:rgba(255,255,255,0.5);font-size:0.9rem;letter-spacing:1px;">
+                No scores yet — you're first!</div>`;
+            return;
+        }
+        leaderboardData.forEach((entry, index) => {
+            const row    = document.createElement('div');
+            row.classList.add('leaderboard-row');
+            if (entry.name === playerName) row.classList.add('current-player');
+
+            const rankEl = document.createElement('div');
+            rankEl.classList.add('row-rank');
+            if      (index===0){ rankEl.classList.add('gold');   rankEl.textContent='🥇'; }
+            else if (index===1){ rankEl.classList.add('silver'); rankEl.textContent='🥈'; }
+            else if (index===2){ rankEl.classList.add('bronze'); rankEl.textContent='🥉'; }
+            else               { rankEl.textContent=`#${index+1}`; }
+
+            const nameEl  = document.createElement('div');
+            nameEl.classList.add('row-name');
+            nameEl.textContent = entry.name;
+
+            const scoreEl = document.createElement('div');
+            scoreEl.classList.add('row-score');
+            scoreEl.textContent = entry.score;
+
+            row.appendChild(rankEl);
+            row.appendChild(nameEl);
+            row.appendChild(scoreEl);
+            listEl.appendChild(row);
+        });
+    }
+
+
+    /* ====================================================
+       SECTION 3 — SPEED / TICK CONSTANTS
+       Logic runs at BASE_SPEED ms per tick.
+       Rendering runs at 60 fps via rAF — fully decoupled.
+    ==================================================== */
+
+    const BASE_SPEED              = 154;   // ms per logic tick
+    const MIN_SPEED               = 56;
+    const SPEED_INCREMENT_NORMAL  = 4;
+    const SPEED_INCREMENT_POWERUP = 12;
+    const BONUS_GROWTH            = 2;
+
+    let currentSpeed = BASE_SPEED;
+
+
+    /* ====================================================
+       SECTION 4 — RAF GAME LOOP (decoupled render)
+
+       • rafId          — handle for the running rAF loop
+       • lastTickTime   — timestamp of the last logic tick
+       • elapsedTime    — real ms since game start (for
+                          smooth sin-wave animations)
+    ==================================================== */
+
+    let rafId        = null;
+    let lastTickTime = 0;
+    let elapsedTime  = 0;
+    let lastFrameTime = 0;
+
+    function startRafLoop() {
+        if (rafId) cancelAnimationFrame(rafId);
+        lastTickTime  = performance.now();
+        lastFrameTime = performance.now();
+        elapsedTime   = 0;
+
+        function loop(now) {
+            const delta = now - lastFrameTime;
+            lastFrameTime = now;
+            elapsedTime  += delta;
+
+            // Logic tick — only fires every currentSpeed ms
+            if (!gamePaused && !gameOver) {
+                if (now - lastTickTime >= currentSpeed) {
+                    lastTickTime = now;
+                    update();
+                }
+            }
+
+            // Render every frame regardless
+            draw(elapsedTime);
+
+            rafId = requestAnimationFrame(loop);
+        }
+
+        rafId = requestAnimationFrame(loop);
+    }
+
+    function stopRafLoop() {
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+ /* ====================================================
+       SECTION 5 — THEME HELPERS
+    ==================================================== */
+
+    function applyTheme(theme) {
+        document.body.className = `theme-${theme}`;
+        currentTheme = theme;
+    }
+
+    function selectTheme(theme, btn) {
+        document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        applyTheme(theme);
+        const goBtn = document.getElementById('startGameBtn');
+        goBtn.classList.add('visible');
+
+        // Update enter button colour
+        goBtn.className = `enter-btn`;
+    }
+
+    function selectModalTheme(theme, btn) {
+        document.querySelectorAll('.modal-theme-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        pendingModalTheme = theme;
+        const goBtn = document.getElementById('modalGoBtn');
+        goBtn.className = `modal-go-btn go-${theme} visible`;
+    }
+
+    function confirmModalTheme() {
+        if (!pendingModalTheme) return;
+        applyTheme(pendingModalTheme);
+        if (currentTheme === 'lightning') startLightningEffect();
+        else stopLightningEffect();
+        closeThemeModal();
+    }
+
+    function syncModalButtons() {
+        document.querySelectorAll('.modal-theme-btn').forEach(b => b.classList.remove('selected'));
+        const active = document.querySelector(`.modal-theme-btn.t-${currentTheme}`);
+        if (active) active.classList.add('selected');
+        pendingModalTheme = currentTheme;
+        const goBtn = document.getElementById('modalGoBtn');
+        goBtn.className = `modal-go-btn go-${currentTheme} visible`;
+    }
+
+    function selectLeaderboardTheme(theme, btn) {
+        document.querySelectorAll('.lb-theme-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        applyTheme(theme);
+        if (theme === 'lightning') startLightningEffect();
+        else stopLightningEffect();
+    }
+
+    function syncLeaderboardThemeButtons() {
+        document.querySelectorAll('.lb-theme-btn').forEach(b => b.classList.remove('selected'));
+        const active = document.querySelector(`.lb-theme-btn.t-${currentTheme}`);
+        if (active) active.classList.add('selected');
+    }
+
+    /* ====================================================
+       SECTION 6 — PAUSE / UNPAUSE
+       With rAF the loop never stops — we just skip
+       update() ticks while paused. Rendering continues
+       so the canvas stays alive.
+    ==================================================== */
+
+    function pauseGame() {
+        if (gameOver || gamePaused) return;
+        gamePaused = true;
+        document.getElementById('pauseIndicator').classList.add('visible');
+    }
+
+    function unpauseGame() {
+        if (!gamePaused) return;
+        gamePaused = false;
+        // Reset tick timer so we don't get an instant tick
+        lastTickTime = performance.now();
+        document.getElementById('pauseIndicator').classList.remove('visible');
+    }
+
+
+    /* ====================================================
+       SECTION 7 — THEME MODAL
+    ==================================================== */
+
+    function openThemeModal() {
+        syncModalButtons();
+        pauseGame();
+        document.getElementById('themeModalBackdrop').classList.add('open');
+    }
+
+    function closeThemeModal() {
+        document.getElementById('themeModalBackdrop').classList.remove('open');
+        unpauseGame();
+    }
+
+    function handleModalBackdropClick(e) {
+        if (e.target === document.getElementById('themeModalBackdrop')) {
+            closeThemeModal();
+        }
+    }
+
+
+    /* ====================================================
+       SECTION 8 — CHANGE THEME BUTTON VISIBILITY
+    ==================================================== */
+
+    function showChangeThemeBtn() {
+        document.getElementById('changeThemeBtn').classList.add('visible');
+    }
+
+
+    /* ====================================================
+       SECTION 9 — LIGHTNING EFFECTS
+       The flash is triggered on a random interval.
+       The actual bolt is now drawn inside draw() with a
+       smooth opacity fade rather than being painted once.
+    ==================================================== */
+
+    let lightningInterval  = null;
+    let lightningBolt      = null;   // { points, opacity, age }
+    let lightningFlashAlpha = 0;     // 0–1, fades smoothly each frame
+
+    function startLightningEffect() {
+        stopLightningEffect();
+        scheduleLightning();
+    }
+
+    function scheduleLightning() {
+        const delay = randomBetween(2500, 5000);
+        lightningInterval = setTimeout(() => {
+            if (currentTheme !== 'lightning') return;
+            triggerLightningFlash();
+            scheduleLightning();   // reschedule
+        }, delay);
+    }
+
+    function stopLightningEffect() {
+        if (lightningInterval) { clearTimeout(lightningInterval); lightningInterval = null; }
+        lightningBolt       = null;
+        lightningFlashAlpha = 0;
+    }
+
+    function triggerLightningFlash() {
+        // Screen flash — we set a value and let draw() fade it
+        lightningFlashAlpha = 1.0;
+
+        // Build a bolt path
+        const points = [];
+        let cx = randomBetween(40, canvas.width - 40);
+        let cy = 0;
+        points.push({ x: cx, y: cy });
+        while (cy < canvas.height) {
+            cx += randomBetween(-28, 28);
+            cy += randomBetween(18, 45);
+            cx  = Math.max(4, Math.min(canvas.width - 4, cx));
+            points.push({ x: cx, y: cy });
+        }
+        lightningBolt = { points, opacity: 1.0 };
+    }
+
+
+    /* ====================================================
+       SECTION 10 — KEYBOARD CONTROLS
+    ==================================================== */
+
+    document.addEventListener('keydown', (e) => {
+        const lbVisible = !document.getElementById('leaderboardScreen').classList.contains('hidden');
+        if (lbVisible) {
+            if (!['shift','control','alt','meta','escape'].includes(e.key.toLowerCase())) {
+                restartSameTheme();
+                return;
+            }
+        }
+        if (e.key === 'Escape') { closeThemeModal(); return; }
+        if (gamePaused || gameOver) return;
+
+        // Get the last queued direction, or current if queue empty
+        const last = inputQueue.length > 0
+            ? inputQueue[inputQueue.length - 1]
+            : { dx, dy };
+
+        let newDx = last.dx, newDy = last.dy;
+
+        switch (e.key.toLowerCase()) {
+            case 'arrowup':    case 'w': if (last.dy === 0)  { newDx = 0;  newDy = -1; } break;
+            case 'arrowdown':  case 's': if (last.dy === 0)  { newDx = 0;  newDy =  1; } break;
+            case 'arrowleft':  case 'a': if (last.dx === 0)  { newDx = -1; newDy =  0; } break;
+            case 'arrowright': case 'd': if (last.dx === 0)  { newDx =  1; newDy =  0; } break;
+            default: return;
+        }
+
+        // Only queue if direction actually changed
+        if (newDx === last.dx && newDy === last.dy) return;
+
+        if (inputQueue.length < MAX_QUEUE) {
+            inputQueue.push({ dx: newDx, dy: newDy });
+        }
+    });
+
+    /* ====================================================
+       SECTION 11 — RESTART SAME THEME
+    ==================================================== */
+
+    function restartSameTheme() {
+        document.getElementById('leaderboardScreen').classList.add('hidden');
+        resetGame();
+    }
+
+
+    /* ====================================================
+       SECTION 12 — GAME UPDATE (logic only)
+    ==================================================== */
+
+    function update() {
+        // Drain one input from the queue each tick
+        if (inputQueue.length > 0) {
+            const next = inputQueue.shift();
+            dx = next.dx;
+            dy = next.dy;
+        }
+
+        const head    = snake[0];
+        const newHead = { x: head.x + dx, y: head.y + dy };
+
+        // Wall collision
+        if (newHead.x < 0 || newHead.x >= tileCount ||
+            newHead.y < 0 || newHead.y >= tileCount) { endGame(); return; }
+
+        // Self collision
+        for (let seg of snake) {
+            if (newHead.x === seg.x && newHead.y === seg.y) { endGame(); return; }
+        }
+
+        snake.unshift(newHead);
+
+        if (newHead.x === apple.x && newHead.y === apple.y) {
+            applesEaten++;
+            score += 10;
+            scoreDisplay.textContent = score;
+            if (applesEaten % 5 === 0) applyPowerupMilestone();
+            else                       applyNormalSpeedIncrease();
+            spawnApple();
+        } else {
+            snake.pop();
+        }
+    }
+
+
+    /* ====================================================
+       SECTION 13 — SPEED / POWERUP
+    ==================================================== */
+
+    function applyNormalSpeedIncrease() {
+        currentSpeed = Math.max(MIN_SPEED, currentSpeed - SPEED_INCREMENT_NORMAL);
+    }
+
+    function applyPowerupMilestone() {
+        currentSpeed = Math.max(MIN_SPEED, currentSpeed - SPEED_INCREMENT_POWERUP);
+        for (let i = 0; i < BONUS_GROWTH; i++) snake.push({ ...snake[snake.length - 1] });
+        activatePowerupVisuals();
+        showPowerupBanner();
+    }
+
+    function activatePowerupVisuals() {
+        powerupActive = true;
+        if (powerupTimer) clearTimeout(powerupTimer);
+        powerupTimer = setTimeout(() => { powerupActive = false; }, POWERUP_DURATION);
+    }
+
+    function showPowerupBanner() {
+        const banner = document.getElementById('powerupBanner');
+        const msgs   = { lightning:'⚡ ZEUS POWER! ⚡', floral:'🌸 BOBA BOOST! 🌸', fire:'🔥 INFERNO MODE! 🔥', shark:'🦈 FRENZY! 🦈' };
+        banner.textContent = msgs[currentTheme] || '⚡ POWER UP! ⚡';
+        banner.classList.add('show');
+        setTimeout(() => banner.classList.remove('show'), 1800);
+    }
+
+
+    /* ====================================================
+       SECTION 14 — SPAWN APPLE
+    ==================================================== */
+
+    function spawnApple() {
+        let newApple, collision;
+        do {
+            collision = false;
+            newApple  = { x: Math.floor(Math.random()*tileCount), y: Math.floor(Math.random()*tileCount) };
+            for (let seg of snake) {
+                if (newApple.x === seg.x && newApple.y === seg.y) { collision = true; break; }
+            }
+        } while (collision);
+        apple = newApple;
+    }
+
+
+    /* ====================================================
+       SECTION 15 — DRAW  (called every rAF frame)
+       t = elapsed time in ms — used for smooth animations
+    ==================================================== */
+
+    function draw(t = 0) {
+        drawGlassBackground();
+        drawGrid();
+
+        // Lightning bolt — fades out smoothly each frame
+        if (currentTheme === 'lightning') {
+            if (lightningBolt && lightningBolt.opacity > 0) {
+                drawLightningBolt(lightningBolt);
+                lightningBolt.opacity -= 0.045;   // fade over ~22 frames ≈ 370 ms
+                if (lightningBolt.opacity <= 0) lightningBolt = null;
+            }
+            // Screen flash overlay fade
+            if (lightningFlashAlpha > 0) {
+                const overlay = document.getElementById('lightningFlashOverlay');
+                overlay.style.opacity = lightningFlashAlpha.toFixed(3);
+                lightningFlashAlpha  -= 0.06;
+                if (lightningFlashAlpha <= 0) {
+                    lightningFlashAlpha = 0;
+                    overlay.style.opacity = '0';
+                }
+            }
+        }
+
+        // Powerup particles — spawned every few frames
+        if (powerupActive && Math.floor(t / 16) % 3 === 0) spawnPowerupParticles();
+
+        // Snake segments
+        snake.forEach((seg, i) => drawSnakeSegment(seg, i, t));
+
+        // Apple
+        drawApple(t);
+    }
+
+    /* ====================================================
+       SECTION 16 — GLASS BACKGROUND
+    ==================================================== */
+
+    function drawGlassBackground() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        switch (currentTheme) {
+            case 'lightning': ctx.fillStyle='rgba(5,  10, 30, 0.28)'; break;
+            case 'floral':    ctx.fillStyle='rgba(40,  0, 20, 0.22)'; break;
+            case 'fire':      ctx.fillStyle='rgba(30,  5,  0, 0.25)'; break;
+            case 'shark':     ctx.fillStyle='rgba( 0, 20, 10, 0.22)'; break;
+            default:          ctx.fillStyle='rgba(10, 10, 20, 0.30)'; break;
+        }
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+
+    /* ====================================================
+       SECTION 17 — GRID
+    ==================================================== */
+
+    function drawGrid() {
+        let lc, gc;
+        switch (currentTheme) {
+            case 'lightning': lc='rgba(79,195,247,0.22)';  gc='rgba(79,195,247,0.07)';  break;
+            case 'floral':    lc='rgba(255,128,171,0.22)'; gc='rgba(255,128,171,0.07)'; break;
+            case 'fire':      lc='rgba(255,109,0,0.22)';   gc='rgba(255,109,0,0.07)';   break;
+            case 'shark':     lc='rgba(0,230,118,0.22)';   gc='rgba(0,230,118,0.07)';   break;
+            default:          lc='rgba(255,255,255,0.10)'; gc='rgba(255,255,255,0.03)'; break;
+        }
+        ctx.save();
+        ctx.strokeStyle = gc; ctx.lineWidth = 3;
+        for (let i = 0; i <= tileCount; i++) {
+            ctx.beginPath(); ctx.moveTo(i*gridSize, 0);           ctx.lineTo(i*gridSize, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0,           i*gridSize); ctx.lineTo(canvas.width, i*gridSize);  ctx.stroke();
+        }
+        ctx.strokeStyle = lc; ctx.lineWidth = 0.5;
+        for (let i = 0; i <= tileCount; i++) {
+            ctx.beginPath(); ctx.moveTo(i*gridSize, 0);           ctx.lineTo(i*gridSize, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0,           i*gridSize); ctx.lineTo(canvas.width, i*gridSize);  ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+
+    /* ====================================================
+       SECTION 18 — LIGHTNING BOLT (smooth fade)
+    ==================================================== */
+
+    function drawLightningBolt(bolt) {
+        if (!bolt || bolt.points.length < 2) return;
+        ctx.save();
+        ctx.globalAlpha  = Math.max(0, bolt.opacity);
+        ctx.strokeStyle  = `rgba(180, 230, 255, ${bolt.opacity.toFixed(2)})`;
+        ctx.lineWidth    = 1.5 + bolt.opacity * 1.5;
+        ctx.shadowColor  = '#4fc3f7';
+        ctx.shadowBlur   = 18 * bolt.opacity;
+        ctx.lineCap      = 'round';
+        ctx.lineJoin     = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bolt.points[0].x, bolt.points[0].y);
+        for (let i = 1; i < bolt.points.length; i++) {
+            ctx.lineTo(bolt.points[i].x, bolt.points[i].y);
+        }
+        ctx.stroke();
+        // Bright core
+        ctx.strokeStyle = `rgba(255,255,255,${(bolt.opacity * 0.7).toFixed(2)})`;
+        ctx.lineWidth   = 0.8;
+        ctx.shadowBlur  = 6;
+        ctx.stroke();
+        ctx.restore();
+    }
+
+
+    /* ====================================================
+       SECTION 19 — DRAW SNAKE SEGMENT
+       t = elapsed ms — used for smooth glow pulse
+    ==================================================== */
+
+    function drawSnakeSegment(segment, index, t = 0) {
+        const isHead = index === 0;
+        let hc, bc;
+        switch (currentTheme) {
+            case 'lightning': hc='#4fc3f7'; bc='#0288d1'; break;
+            case 'floral':    hc='#ff80ab'; bc='#f06292'; break;
+            case 'fire':      hc='#ffab40'; bc='#e65100'; break;
+            case 'shark':     hc='#69f0ae'; bc='#00897b'; break;
+            default:          hc='#00ff00'; bc='#00cc00'; break;
+        }
+
+        ctx.save();
+        if (powerupActive) {
+            // Smooth continuous glow pulse using real elapsed time
+            const pulse = 0.5 + 0.5 * Math.sin(t * 0.008 - index * 0.3);
+            ctx.shadowColor = hc;
+            ctx.shadowBlur  = 8 + pulse * 18;
+        } else if (isHead) {
+            ctx.shadowColor = hc;
+            ctx.shadowBlur  = 10;
+        }
+
+        // Gradient fill per segment
+        const grad = ctx.createLinearGradient(
+            segment.x * gridSize,
+            segment.y * gridSize,
+            segment.x * gridSize + gridSize,
+            segment.y * gridSize + gridSize
+        );
+        const ratio = index / Math.max(snake.length - 1, 1);
+        // Head is bright, tail fades darker
+        grad.addColorStop(0, isHead ? hc : interpolateColor(hc, bc, ratio));
+        grad.addColorStop(1, bc);
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        const r = isHead ? 6 : 4;
+        roundRect(ctx,
+            segment.x * gridSize + 1,
+            segment.y * gridSize + 1,
+            gridSize - 2,
+            gridSize - 2,
+            r
+        );
+        ctx.fill();
+
+        // Head eyes
+        if (isHead) drawSnakeEyes(segment, t);
+        ctx.restore();
+    }
+
+
+    /* ====================================================
+       SECTION 20 — SNAKE EYES
+    ==================================================== */
+
+    function drawSnakeEyes(head, t = 0) {
+        ctx.save();
+
+        let eye1, eye2;
+        if      (dx ===  1) { eye1={x:14,y:4};  eye2={x:14,y:12}; }
+        else if (dx === -1) { eye1={x:4, y:4};  eye2={x:4, y:12}; }
+        else if (dy === -1) { eye1={x:4, y:4};  eye2={x:12,y:4};  }
+        else                { eye1={x:4, y:14}; eye2={x:12,y:14}; }
+
+        const bx = head.x * gridSize;
+        const by = head.y * gridSize;
+
+        if (powerupActive) {
+            // Smooth pulsing glow on eyes during powerup
+            const pulse = 0.5 + 0.5 * Math.sin(t * 0.012);
+            let glowColor;
+            switch (currentTheme) {
+                case 'lightning': glowColor = `rgba(79,195,247,${0.7 + pulse * 0.3})`; break;
+                case 'floral':    glowColor = `rgba(255,128,171,${0.7 + pulse * 0.3})`; break;
+                case 'fire':      glowColor = `rgba(255,109,0,${0.7 + pulse * 0.3})`;   break;
+                case 'shark':     glowColor = `rgba(0,230,118,${0.7 + pulse * 0.3})`;   break;
+                default:          glowColor = `rgba(255,255,255,${0.7 + pulse * 0.3})`; break;
+            }
+            ctx.shadowColor = glowColor;
+            ctx.shadowBlur  = 6 + pulse * 14;
+
+            // Eye colour shifts to theme colour during powerup
+            let eyeColor;
+            switch (currentTheme) {
+                case 'lightning': eyeColor = '#e1f5fe'; break;
+                case 'floral':    eyeColor = '#fce4ec'; break;
+                case 'fire':      eyeColor = '#fff8e1'; break;
+                case 'shark':     eyeColor = '#e8f5e9'; break;
+                default:          eyeColor = 'white';   break;
+            }
+            ctx.fillStyle = eyeColor;
+        } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle  = 'white';
+        }
+
+        // Eye whites
+        ctx.beginPath();
+        ctx.arc(bx + eye1.x, by + eye1.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(bx + eye2.x, by + eye2.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pupils — glow colour during powerup, dark otherwise
+        ctx.shadowBlur  = 0;
+        ctx.fillStyle   = powerupActive ? '#000' : '#111';
+        ctx.beginPath();
+        ctx.arc(bx + eye1.x + 0.5, by + eye1.y + 0.5, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(bx + eye2.x + 0.5, by + eye2.y + 0.5, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+
+    /* ====================================================
+       SECTION 21 — DRAW APPLE
+       Smooth bob and glow pulse using elapsed time
+    ==================================================== */
+
+    function drawApple(t = 0) {
+        const ax = apple.x * gridSize + gridSize / 2;
+        const ay = apple.y * gridSize + gridSize / 2;
+
+        // Smooth vertical bob
+        const bob  = Math.sin(t * 0.003) * 2.2;
+        // Smooth glow pulse
+        const glow = 8 + 6 * Math.sin(t * 0.004);
+
+        ctx.save();
+        ctx.translate(ax, ay + bob);
+
+        let appleColor, glowColor;
+        switch (currentTheme) {
+            case 'lightning': appleColor = '#fff176'; glowColor = '#ffe57f'; break;
+            case 'floral':    appleColor = '#ff4081'; glowColor = '#ff80ab'; break;
+            case 'fire':      appleColor = '#ff3d00'; glowColor = '#ff6d00'; break;
+            case 'shark':     appleColor = '#00e676'; glowColor = '#69f0ae'; break;
+            default:          appleColor = '#ff4444'; glowColor = '#ff8888'; break;
+        }
+
+        // Outer glow
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur  = glow;
+
+        // Apple body
+        ctx.fillStyle = appleColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, gridSize / 2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Shine highlight
+        ctx.shadowBlur  = 0;
+        ctx.fillStyle   = 'rgba(255,255,255,0.35)';
+        ctx.beginPath();
+        ctx.arc(-2.5, -3, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stem
+        ctx.strokeStyle = '#5d4037';
+        ctx.lineWidth   = 1.8;
+        ctx.lineCap     = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, -(gridSize / 2 - 2));
+        ctx.quadraticCurveTo(4, -(gridSize / 2 + 4), 3, -(gridSize / 2 + 6));
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+
+    /* ====================================================
+       SECTION 22 — POWERUP PARTICLES
+       Spawned every few frames while powerupActive
+    ==================================================== */
+
+    function spawnPowerupParticles() {
+        if (snake.length === 0) return;
+        const head = snake[0];
+        const cx = head.x * gridSize + gridSize / 2 + canvas.getBoundingClientRect().left;
+        const cy = head.y * gridSize + gridSize / 2 + canvas.getBoundingClientRect().top;
+
+        switch (currentTheme) {
+            case 'lightning': spawnSpark(cx,  cy);  break;
+            case 'floral':    spawnPetal(cx,  cy);  break;
+            case 'fire':      spawnEmber(cx,  cy);  break;
+            case 'shark':     spawnBubble(cx, cy);  break;
+        }
+    }
+
+    function spawnSpark(cx, cy) {
+        const el = document.createElement('div');
+        el.className = 'spark-particle';
+        const tx = randomBetween(-55, 55);
+        const ty = randomBetween(-55, 55);
+        const sz = randomBetween(4, 9);
+        Object.assign(el.style, {
+            left: `${cx}px`, top: `${cy}px`,
+            width: `${sz}px`, height: `${sz}px`,
+            background: ['#fff176','#4fc3f7','#ffffff'][Math.floor(Math.random()*3)],
+            boxShadow: `0 0 6px 2px rgba(79,195,247,0.8)`,
+            '--tx': `${tx}px`, '--ty': `${ty}px`
+        });
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 600);
+    }
+
+    function spawnPetal(cx, cy) {
+        const el = document.createElement('div');
+        el.className = 'petal-particle';
+        const tx = randomBetween(-60, 60);
+        const ty = randomBetween(-60, 40);
+        const sz = randomBetween(8, 16);
+        const emojis = ['🌸','🌺','🌷','💮','🏵️'];
+        el.style.cssText = `
+            left:${cx}px; top:${cy}px;
+            font-size:${sz}px; line-height:1;
+            --tx:${tx}px; --ty:${ty}px;
+        `;
+        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1200);
+    }
+
+    function spawnEmber(cx, cy) {
+        const el = document.createElement('div');
+        el.className = 'ember-particle';
+        const tx = randomBetween(-45, 45);
+        const ty = randomBetween(-70, -20);
+        const sz = randomBetween(4, 10);
+        Object.assign(el.style, {
+            left: `${cx}px`, top: `${cy}px`,
+            width: `${sz}px`, height: `${sz}px`,
+            background: ['#ff6d00','#ff3d00','#ffab40','#fff176'][Math.floor(Math.random()*4)],
+            boxShadow: `0 0 6px 3px rgba(255,109,0,0.7)`,
+            '--tx': `${tx}px`, '--ty': `${ty}px`
+        });
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 900);
+    }
+
+    function spawnBubble(cx, cy) {
+        const el = document.createElement('div');
+        el.className = 'bubble-particle';
+        const tx = randomBetween(-40, 40);
+        const ty = randomBetween(-65, -15);
+        const sz = randomBetween(8, 18);
+        Object.assign(el.style, {
+            left: `${cx}px`, top: `${cy}px`,
+            width: `${sz}px`, height: `${sz}px`,
+            '--tx': `${tx}px`, '--ty': `${ty}px`
+        });
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+
+    /* ====================================================
+       SECTION 23 — COLOUR HELPERS
+    ==================================================== */
+
+    function interpolateColor(hex1, hex2, ratio) {
+        const r1=parseInt(hex1.slice(1,3),16), g1=parseInt(hex1.slice(3,5),16), b1=parseInt(hex1.slice(5,7),16);
+        const r2=parseInt(hex2.slice(1,3),16), g2=parseInt(hex2.slice(3,5),16), b2=parseInt(hex2.slice(5,7),16);
+        const r=Math.round(r1+(r2-r1)*ratio);
+        const g=Math.round(g1+(g2-g1)*ratio);
+        const b=Math.round(b1+(b2-b1)*ratio);
+        return `rgb(${r},${g},${b})`;
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.arcTo(x + w, y,     x + w, y + r,     r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx.lineTo(x + r, y + h);
+        ctx.arcTo(x,     y + h, x,     y + h - r, r);
+        ctx.lineTo(x,     y + r);
+        ctx.arcTo(x,     y,     x + r, y,         r);
+        ctx.closePath();
+    }
+
+    function randomBetween(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+
+    /* ====================================================
+       SECTION 24 — END GAME
+    ==================================================== */
+
+    function endGame() {
+        gameOver = true;
+        // Loop keeps running so canvas stays rendered (frozen snake visible)
+        submitScore(currentPlayerName, score);
+        renderLeaderboard(currentPlayerName);
+        document.getElementById('currentScoreDisplay').textContent = `You scored: ${score}`;
+        syncLeaderboardThemeButtons();
+        setTimeout(() => {
+            document.getElementById('leaderboardScreen').classList.remove('hidden');
+        }, 600);
+    }
+
+
+    /* ====================================================
+       SECTION 25 — RESET GAME
+    ==================================================== */
+
+    function resetGame() {
+        snake        = [{ x:12, y:12 }];
+        dx=1; dy=0;
+        inputQueue.length = 0;   // clear queue on reset
+        score        = 0;
+        gameOver     = false;
+        gamePaused   = false;
+        applesEaten  = 0;
+        currentSpeed = BASE_SPEED;
+        powerupActive = false;
+        if (powerupTimer) { clearTimeout(powerupTimer); powerupTimer = null; }
+
+        scoreDisplay.textContent = '0';
+        gameOverText.textContent  = '';
+        document.getElementById('pauseIndicator').classList.remove('visible');
+
+        spawnApple();
+        lastTickTime = performance.now();
+    }
+
+
+    /* ====================================================
+       SECTION 26 — WELCOME SCREEN / START
+    ==================================================== */
+
+    document.getElementById('startGameBtn').addEventListener('click', () => {
+        const input    = document.getElementById('playerNameInput');
+        const errorMsg = document.getElementById('nameErrorMsg');
+        const name     = input.value.trim();
+
+        if (!name) {
+            input.classList.add('input-error','shake');
+            errorMsg.textContent = 'Please enter your name to continue!';
+            setTimeout(() => input.classList.remove('shake'), 560);
+            return;
+        }
+        if (!currentTheme) {
+            errorMsg.textContent = 'Please pick a theme first!';
+            return;
+        }
+
+        input.classList.remove('input-error');
+        errorMsg.textContent    = '';
+        currentPlayerName       = name;
+
+        document.getElementById('welcomeScreen').classList.add('hidden');
+        showChangeThemeBtn();
+        resetGame();
+        startRafLoop();
+    });
+
+    document.getElementById('playerNameInput').addEventListener('input', () => {
+        document.getElementById('playerNameInput').classList.remove('input-error');
+        document.getElementById('nameErrorMsg').textContent = '';
+    });
+
+    document.getElementById('playerNameInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('startGameBtn').click();
+    });
+
+
+    /* ====================================================
+       SECTION 27 — INIT (draw a static frame on load)
+    ==================================================== */
+
+    draw(0);
+
+    </script>
+</body>
+</html>
